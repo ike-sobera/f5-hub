@@ -180,8 +180,18 @@ export default function App() {
       if (promptsRef.current && promptsRef.current.contains(e.target)) {
         if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
           e.preventDefault();
-          // Multiplier to make it feel more natural and overcome snap resistance
-          promptsRef.current.scrollLeft += e.deltaY * 1.5;
+          
+          // Normalize delta based on deltaMode (0: pixels, 1: lines, 2: pages)
+          let delta = e.deltaY;
+          if (e.deltaMode === 1) delta *= 40; // Approx pixels per line
+          if (e.deltaMode === 2) delta *= 800; // Approx pixels per page
+          
+          // Increased multiplier to overcome scroll-snap-type: mandatory resistance
+          // and ensure the movement is enough to reach the next snap point.
+          promptsRef.current.scrollBy({
+            left: delta * 2.5,
+            behavior: 'auto'
+          });
         }
       }
     };
