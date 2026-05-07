@@ -33,6 +33,19 @@ export const AuthProvider = ({ children }) => {
           duration: 5000,
         });
       } else {
+        // Upsert user profile to ensure it appears in the Admin Users list
+        const { error } = await supabase
+          .from('profiles')
+          .upsert({ 
+            id: session.user.id, 
+            email: session.user.email,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'id' });
+        
+        if (error) {
+          console.error('Error syncing profile:', error);
+        }
+        
         setUser(session.user);
       }
     } else {
