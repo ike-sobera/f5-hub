@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { toast } from 'sonner';
-import { Users, Shield, Calendar, RefreshCw } from 'lucide-react';
+import { Users, Shield, Calendar, RefreshCw, Trash2 } from 'lucide-react';
 
 export default function AdminUsers() {
   const [profiles, setProfiles] = useState([]);
@@ -30,11 +30,29 @@ export default function AdminUsers() {
       toast.error('Não é possível alterar o nível do Super Admin.');
       return;
     }
-
-    // This is a simulation or real update if the table supports a 'role' column
-    // For now, we assume the user might want to update a 'role' column if it exists
-    // If not, we show a message that RLS might be needed
     toast.info('Funcionalidade de troca de Role em desenvolvimento no Supabase.');
+  };
+
+  const deleteProfile = async (profile) => {
+    if (profile.email === 'henrique@f5estrategia.com.br') {
+      toast.error('Você não pode excluir o Super Admin.');
+      return;
+    }
+
+    if (!window.confirm(`Tem certeza que deseja remover o acesso de ${profile.email}?`)) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('profiles').delete().eq('id', profile.id);
+      if (error) throw error;
+      
+      toast.success('Usuário removido da lista.');
+      setProfiles(prev => prev.filter(p => p.id !== profile.id));
+    } catch (err) {
+      toast.error('Erro ao remover usuário');
+      console.error(err);
+    }
   };
 
   return (
@@ -80,9 +98,14 @@ export default function AdminUsers() {
                   </span>
                 </td>
                 <td>
-                  <button className="btn-outline" style={{ padding: '4px 12px', fontSize: '11px' }} onClick={() => toggleAdmin(p)}>
-                    Alterar Nível
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn-outline" style={{ padding: '4px 12px', fontSize: '11px' }} onClick={() => toggleAdmin(p)}>
+                      Alterar Nível
+                    </button>
+                    <button className="btn-icon btn-icon-danger" style={{ padding: '4px', borderRadius: '6px' }} onClick={() => deleteProfile(p)} title="Excluir Usuário">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
