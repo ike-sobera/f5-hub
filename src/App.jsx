@@ -175,8 +175,22 @@ export default function App() {
       document.documentElement.style.setProperty('--mouse-x', `${e.clientX}px`);
       document.documentElement.style.setProperty('--mouse-y', `${e.clientY}px`);
     };
+
+    const handleWheel = (e) => {
+      if (promptsRef.current && promptsRef.current.contains(e.target)) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          e.preventDefault();
+          promptsRef.current.scrollLeft += e.deltaY;
+        }
+      }
+    };
+
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('wheel', handleWheel);
+    };
   }, []);
 
   useEffect(() => {
