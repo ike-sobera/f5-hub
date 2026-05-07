@@ -180,7 +180,8 @@ export default function App() {
       if (promptsRef.current && promptsRef.current.contains(e.target)) {
         if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
           e.preventDefault();
-          promptsRef.current.scrollLeft += e.deltaY;
+          // Multiplier to make it feel more natural and overcome snap resistance
+          promptsRef.current.scrollLeft += e.deltaY * 1.5;
         }
       }
     };
@@ -231,7 +232,10 @@ export default function App() {
     if (closest !== activePromptIndex) setActivePromptIndex(closest);
   };
 
-  const handleCardClick = (i) => promptsRef.current?.children[i]?.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+  const handleCardClick = (i) => {
+    setActivePromptIndex(i);
+    promptsRef.current?.children[i]?.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+  };
   const handleDragStart = (e, id) => { e.dataTransfer.setData('toolId', id); setDraggedToolId(id); };
   const handleDragEnd = () => setDraggedToolId(null);
   const handleDragOver = (e) => e.preventDefault();
