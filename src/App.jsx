@@ -427,7 +427,35 @@ export default function App() {
         </main>
       </div>
 
-      {selectedTool && <ToolModal tool={selectedTool} currentUser={user?.email} social={socialState[selectedTool.id] || {}} updateSocial={(u) => { const id = selectedTool.id; setSocialState(prev => { const n = { ...prev, [id]: u(prev[id] || {}) }; supabase.from('social_interactions').upsert({ tool_id: id, data: n[id] }); return n; }); }} onClose={() => setSelectedTool(null)} />}
+      {selectedTool && (
+        <ToolModal 
+          tool={selectedTool} 
+          currentUser={user?.email} 
+          social={socialState[selectedTool.id] || {}} 
+          updateSocial={async (updater) => { 
+            const id = selectedTool.id;
+            const currentData = socialState[id] || {};
+            const newData = updater(currentData);
+            
+            // 1. Atualiza o estado local para feedback instantâneo
+            setSocialState(prev => ({ ...prev, [id]: newData }));
+            
+            // 2. Salva no banco de dados de forma persistente
+            const { error } = await supabase
+              .from('social_interactions')
+              .upsert(
+                { tool_id: id, data: newData }, 
+                { onConflict: 'tool_id' }
+              );
+              
+            if (error) {
+              console.error('Erro ao salvar interação:', error);
+              toast.error('Erro ao salvar sua interação.');
+            }
+          }} 
+          onClose={() => setSelectedTool(null)} 
+        />
+      )}
       {selectedDoc && (
         <div className="modal-overlay" onClick={() => setSelectedDoc(null)} style={{zIndex: 2000}}>
           <div className="modal-content doc-modal" onClick={e => e.stopPropagation()}>
