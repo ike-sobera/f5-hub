@@ -222,13 +222,23 @@ export default function App() {
     if (!promptsRef.current) return;
     const { scrollLeft, scrollWidth, clientWidth } = promptsRef.current;
     setScrollProgress((scrollLeft / (scrollWidth - clientWidth)) * 100);
-    const center = scrollLeft + clientWidth / 2;
+    
+    const carouselRect = promptsRef.current.getBoundingClientRect();
+    const carouselCenter = carouselRect.left + carouselRect.width / 2;
+    
     let closest = 0;
     let min = Infinity;
+    
     Array.from(promptsRef.current.children).forEach((c, i) => {
-      const d = Math.abs(center - (c.offsetLeft + c.clientWidth / 2));
-      if (d < min) { min = d; closest = i; }
+      const rect = c.getBoundingClientRect();
+      const cardCenter = rect.left + rect.width / 2;
+      const d = Math.abs(carouselCenter - cardCenter);
+      if (d < min) {
+        min = d;
+        closest = i;
+      }
     });
+    
     if (closest !== activePromptIndex) setActivePromptIndex(closest);
   };
 

@@ -476,6 +476,7 @@ p {
   -webkit-mask-image: linear-gradient(to right, transparent 0%, black 15%, black 85%, transparent 100%);
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  position: relative;
 }
 
 .prompts-carousel::-webkit-scrollbar {
@@ -491,7 +492,7 @@ p {
 }
 
 .prompt-wrapper.active {
-  transform: scale(1.02);
+  transform: scale(1.05);
   opacity: 1;
   z-index: 10;
 }
