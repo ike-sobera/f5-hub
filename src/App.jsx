@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { Copy, Check, X, HelpCircle, MessageSquare, ThumbsUp, ThumbsDown, Target, Plus, Trash2, LogOut, Settings as SettingsIcon, LayoutGrid, BookOpen, TrendingUp, FileText, User, BarChart3, Users, Download, Shield, Zap, Search, CheckCircle, Eye, Info } from 'lucide-react';
+import { Copy, Check, X, HelpCircle, MessageSquare, ThumbsUp, ThumbsDown, Target, Plus, Trash2, LogOut, Settings as SettingsIcon, LayoutGrid, BookOpen, TrendingUp, FileText, User, BarChart3, Users, Download, Shield, Zap, Search, CheckCircle, Eye, Info, Pencil } from 'lucide-react';
 import { useAuth } from './contexts/AuthContext';
 import { supabase } from './lib/supabase';
 import { toast } from 'sonner';
@@ -111,10 +111,14 @@ const ToolModal = ({ tool, currentUser, social, updateSocial, onClose }) => {
 
 const PromptCard = ({ item, onEdit, onDelete, isAdmin }) => {
   const [copied, setCopied] = useState(false);
-  const handleCopy = () => {
+  const handleCopy = async () => {
     navigator.clipboard.writeText(item.prompt || '');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    
+    // Métrica de uso
+    const { error } = await supabase.rpc('increment_prompt_copy', { target_id: item.id });
+    if (error) console.error('Erro ao incrementar cópia do prompt:', error);
   };
   return (
     <div className="glass-card prompt-card hover-actions-container" style={{ position: 'relative', cursor: 'pointer' }} onClick={() => onEdit(item)}>
@@ -351,8 +355,13 @@ export default function App() {
                       <div key={s} className="kanban-column" onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, s)}>
                         <div className="kanban-col-header">{s}</div>
                         {tools.filter(t => t.status?.toLowerCase() === s.toLowerCase()).map(t => (
-                          <div key={t.id} className={`glass-card tool-card ${draggedToolId === t.id ? 'is-dragging' : ''}`} draggable onDragStart={(e) => handleDragStart(e, t.id)} onDragEnd={handleDragEnd} onClick={() => openEditModal('tools', t)}>
-                            {isAdmin && <button onClick={(e) => { e.stopPropagation(); handleDelete('tools', t.id); }} className="btn-icon btn-icon-danger card-delete"><Trash2 size={14} /></button>}
+                          <div key={t.id} className={`glass-card tool-card ${draggedToolId === t.id ? 'is-dragging' : ''}`} draggable onDragStart={(e) => handleDragStart(e, t.id)} onDragEnd={handleDragEnd} onClick={() => setSelectedTool(t)}>
+                            {isAdmin && (
+                              <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
+                                <button onClick={(e) => { e.stopPropagation(); openEditModal('tools', t); }} className="btn-icon card-edit"><Pencil size={14} /></button>
+                                <button onClick={(e) => { e.stopPropagation(); handleDelete('tools', t.id); }} className="btn-icon btn-icon-danger card-delete"><Trash2 size={14} /></button>
+                              </div>
+                            )}
                             <h3 className="text-primary">{t.name}</h3><p className="tool-desc text-support">{t.desc}</p>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}><span className="badge">{t.category}</span><button onClick={(e) => { e.stopPropagation(); setSelectedTool(t); }} className="btn-icon"><MessageSquare size={14} /></button></div>
                           </div>
@@ -411,10 +420,15 @@ export default function App() {
                     <button className="btn-primary" onClick={() => openAddModal('docs')} style={{ flexShrink: 0 }}><Plus size={16} /> Adicionar Novo</button>
                   </div>
                   <div className="docs-grid">{docs.map(d => (
-                    <div key={d.id} className="glass-card doc-card" onClick={() => openEditModal('docs', d)}>
-                      {isAdmin && <button onClick={(e) => { e.stopPropagation(); handleDelete('docs', d.id); }} className="btn-icon btn-icon-danger card-delete"><Trash2 size={14} /></button>}
+                    <div key={d.id} className="glass-card doc-card" onClick={() => setSelectedDoc(d)}>
+                      {isAdmin && (
+                        <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
+                          <button onClick={(e) => { e.stopPropagation(); openEditModal('docs', d); }} className="btn-icon card-edit"><Pencil size={14} /></button>
+                          <button onClick={(e) => { e.stopPropagation(); handleDelete('docs', d.id); }} className="btn-icon btn-icon-danger card-delete"><Trash2 size={14} /></button>
+                        </div>
+                      )}
                       <div className="doc-icon">📄</div><h3 className="text-primary">{d.title}</h3><p className="text-support">{d.desc}</p>
-                      <button onClick={(e) => { e.stopPropagation(); setSelectedDoc(d); }} className="btn-outline" style={{ marginTop: 'auto', alignSelf: 'flex-start' }}>Acessar</button>
+                      <button className="btn-outline" style={{ marginTop: 'auto', alignSelf: 'flex-start' }}>Acessar</button>
                     </div>
                   ))}</div>
                 </div>
