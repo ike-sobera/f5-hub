@@ -111,10 +111,14 @@ const ToolModal = ({ tool, currentUser, social, updateSocial, onClose }) => {
 
 const PromptCard = ({ item, onEdit, onDelete, isAdmin }) => {
   const [copied, setCopied] = useState(false);
+  const [copyCount, setCopyCount] = useState(item.copy_count || 0);
+
   const handleCopy = async () => {
     navigator.clipboard.writeText(item.prompt || '');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    
+    setCopyCount(prev => prev + 1);
     
     // Métrica de uso
     const { error } = await supabase.rpc('increment_prompt_copy', { target_id: item.id });
@@ -125,7 +129,13 @@ const PromptCard = ({ item, onEdit, onDelete, isAdmin }) => {
       {isAdmin && (
         <button onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} className="btn-icon btn-icon-danger card-delete"><Trash2 size={14} /></button>
       )}
-      <div className="prompt-header"><div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}><span className="badge">{item.category}</span><span style={{ fontSize: '12px', color: 'var(--text-support)' }}>{item.tool}</span></div></div>
+      <div className="prompt-header">
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <span className="badge">{item.category}</span>
+          <span style={{ fontSize: '12px', color: 'var(--text-support)' }}>{item.tool}</span>
+        </div>
+        <span style={{ fontSize: '12px', color: 'var(--text-support)' }}>{copyCount} cópias</span>
+      </div>
       <div className="prompt-content text-primary">{item.prompt}</div>
       <button className={copied ? "btn-outline" : "btn-primary"} onClick={(e) => { e.stopPropagation(); handleCopy(); }} style={{ width: '100%' }}>
         {copied ? <><Check size={16} /> Copiado!</> : <><Copy size={16} /> Copiar Prompt</>}
@@ -357,13 +367,17 @@ export default function App() {
                         {tools.filter(t => t.status?.toLowerCase() === s.toLowerCase()).map(t => (
                           <div key={t.id} className={`glass-card tool-card ${draggedToolId === t.id ? 'is-dragging' : ''}`} draggable onDragStart={(e) => handleDragStart(e, t.id)} onDragEnd={handleDragEnd} onClick={() => setSelectedTool(t)}>
                             {isAdmin && (
-                              <div style={{ position: 'absolute', top: '12px', right: '12px', display: 'flex', gap: '8px' }}>
-                                <button onClick={(e) => { e.stopPropagation(); openEditModal('tools', t); }} className="btn-icon card-edit"><Pencil size={14} /></button>
+                              <div style={{ position: 'absolute', top: '12px', right: '12px' }}>
                                 <button onClick={(e) => { e.stopPropagation(); handleDelete('tools', t.id); }} className="btn-icon btn-icon-danger card-delete"><Trash2 size={14} /></button>
                               </div>
                             )}
                             <h3 className="text-primary">{t.name}</h3><p className="tool-desc text-support">{t.desc}</p>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}><span className="badge">{t.category}</span><button onClick={(e) => { e.stopPropagation(); setSelectedTool(t); }} className="btn-icon"><MessageSquare size={14} /></button></div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                              <span className="badge">{t.category}</span>
+                              {isAdmin && (
+                                <button onClick={(e) => { e.stopPropagation(); openEditModal('tools', t); }} className="btn-icon card-edit"><Pencil size={14} /></button>
+                              )}
+                            </div>
                           </div>
                         ))}
                       </div>

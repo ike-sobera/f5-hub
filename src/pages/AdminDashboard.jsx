@@ -17,11 +17,11 @@ export default function AdminDashboard() {
         supabase.from('trends').select('*', { count: 'exact', head: true }),
         supabase.from('docs').select('*', { count: 'exact', head: true }),
         supabase.from('tools').select('name, category').order('created_at', { ascending: false }).limit(5),
-        supabase.from('prompts').select('id, prompt, copies').order('copies', { ascending: false }).limit(5),
-        supabase.from('prompts').select('copies')
+        supabase.from('prompts').select('id, prompt, copy_count').order('copy_count', { ascending: false }).limit(5),
+        supabase.from('prompts').select('copy_count')
       ]);
 
-      const totalCopiesCount = totalCopiesData.data?.reduce((acc, curr) => acc + (curr.copies || 0), 0) || 0;
+      const totalCopiesCount = totalCopiesData.data?.reduce((acc, curr) => acc + (curr.copy_count || 0), 0) || 0;
 
       setStats({
         tools: tools.count || 0,
@@ -36,6 +36,8 @@ export default function AdminDashboard() {
     };
     fetchData();
   }, []);
+
+  const hasInteractions = stats.totalCopies > 0 && topPrompts.some(p => (p.copy_count || 0) > 0);
 
   return (
     <div className="animate-fade-in">
@@ -98,22 +100,28 @@ export default function AdminDashboard() {
             <BarChart3 size={20} className="text-accent" /> Top 5 Prompts Mais Copiados
           </h3>
           <div className="bar-chart" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {topPrompts.map((p, i) => {
-              const maxCopies = Math.max(...topPrompts.map(pr => pr.copies || 1));
-              const width = ((p.copies || 0) / maxCopies) * 100;
-              return (
-                <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                    <span className="text-primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{p.prompt}</span>
-                    <span className="text-support">{p.copies || 0} cópias</span>
+            {!hasInteractions ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', color: 'var(--text-support)' }}>
+                <BarChart3 size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
+                <p style={{ fontSize: '14px' }}>Aguardando interações da equipe</p>
+              </div>
+            ) : (
+              topPrompts.map((p, i) => {
+                const maxCopies = Math.max(...topPrompts.map(pr => pr.copy_count || 1));
+                const width = ((p.copy_count || 0) / maxCopies) * 100;
+                return (
+                  <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                      <span className="text-primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{p.prompt}</span>
+                      <span className="text-support">{p.copy_count || 0} cópias</span>
+                    </div>
+                    <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${width}%`, height: '100%', background: 'var(--accent-color)', borderRadius: '4px' }}></div>
+                    </div>
                   </div>
-                  <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                    <div style={{ width: `${width}%`, height: '100%', background: 'var(--accent-color)', borderRadius: '4px' }}></div>
-                  </div>
-                </div>
-              );
-            })}
-            {topPrompts.length === 0 && <p style={{ color: 'var(--text-support)', textAlign: 'center', padding: '20px' }}>Nenhum dado disponível.</p>}
+                );
+              })
+            )}
           </div>
         </div>
       </div>
