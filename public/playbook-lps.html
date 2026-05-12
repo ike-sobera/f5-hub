@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playbook f5: LPs Interativas</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        f5: {
+                            orange: '#F25621',
+                            hover: '#d94c1c',
+                            dark: '#0a0a0a',
+                            surface: '#141414',
+                            border: '#2E2E2E',
+                            text: '#E0E0E0',
+                            muted: '#A8A8A8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0a0a0a;
+            color: #E0E0E0;
+            overflow-x: hidden;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #2E2E2E; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #F25621; }
+
+        .step-content {
+            display: none;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        .step-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .nav-item.active {
+            background-color: rgba(242, 86, 33, 0.1);
+            border-left-color: #F25621;
+            color: #F25621;
+        }
+        .nav-item.active i {
+            color: #F25621;
+        }
+        .nav-item.completed {
+            color: #A8A8A8;
+        }
+        .nav-item.completed .check-icon {
+            display: inline-block;
+            color: #10B981; /* Green */
+        }
+        
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #141414;
+            border: 1px solid #F25621;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(242, 86, 33, 0.2);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 50;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Mockup Email f5 */
+        .email-mockup {
+            background: #1A1A1A;
+            border: 1px solid #2E2E2E;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .email-header {
+            background: #0a0a0a;
+            padding: 16px;
+            border-bottom: 1px solid #2E2E2E;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row font-sans">
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast flex items-center gap-3">
+        <i class="ph ph-check-circle text-f5-orange text-xl"></i>
+        <span id="toast-msg">Copiado com sucesso!</span>
+    </div>
+
+    <!-- Sidebar Navigation -->
+    <aside class="w-full md:w-80 bg-f5-surface border-b md:border-b-0 md:border-r border-f5-border flex flex-col h-auto md:h-full shrink-0 relative z-20">
+        <div class="p-6 border-b border-f5-border flex items-center gap-4 sticky top-0 bg-f5-surface z-10">
+            <div class="w-10 h-10 bg-f5-orange rounded font-bold text-white flex items-center justify-center text-xl tracking-tighter">f5</div>
+            <div>
+                <h1 class="text-white font-semibold text-lg leading-tight">Playbook LPs</h1>
+                <p class="text-f5-muted text-xs">Fluxo IA + Alta Conversão</p>
+            </div>
+        </div>
+        
+        <div class="p-4 bg-[#0a0a0a] border-b border-f5-border">
+            <div class="flex justify-between text-xs mb-2">
+                <span class="text-f5-muted">Progresso</span>
+                <span id="progress-text" class="text-f5-orange font-medium">0%</span>
+            </div>
+            <div class="w-full bg-f5-border rounded-full h-1.5">
+                <div id="progress-bar" class="bg-f5-orange h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto p-4 flex flex-col gap-1 pb-20" id="nav-menu">
+            <!-- Items gerados via JS -->
+        </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 h-full overflow-y-auto bg-f5-dark relative">
+        <div class="max-w-4xl mx-auto p-6 md:p-12 pb-16" id="content-container">
+            
+            <!-- STEP 1 -->
+            <div class="step-content active" id="step-0">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 1 de 10</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Recepção e Análise <span class="text-f5-orange">do Pedido</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">Tudo começa quando recebemos o pedido da Landing Page (LP). Antes de sair criando, precisamos entender o cenário.</p>
+                
+                <div class="bg-f5-surface border border-f5-border rounded-xl p-6 mb-8">
+                    <h3 class="text-xl font-semibold text-white flex items-center gap-2 mb-4">
+                        <i class="ph ph-target text-f5-orange"></i> O que fazer aqui?
+                    </h3>
+                    <p class="text-f5-muted mb-4">O erro mais comum é começar a desenhar sem saber o objetivo. É para capturar leads (contatos)? É para vender um produto direto? É para um evento?</p>
+                    <ul class="space-y-3 text-f5-muted">
+                        <li class="flex gap-3 items-start"><i class="ph ph-check-circle text-f5-orange mt-1"></i> Leia todo o material (textos, referências).</li>
+                        <li class="flex gap-3 items-start"><i class="ph ph-check-circle text-f5-orange mt-1"></i> Verifique se os textos fazem sentido para o objetivo.</li>
+                        <li class="flex gap-3 items-start"><i class="ph ph-check-circle text-f5-orange mt-1"></i> Se faltar alguma coisa (logo, texto de botão), pergunte agora. Não deixe para depois!</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- STEP 2 -->
+            <div class="step-content" id="step-1">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 2 de 10</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Curadoria e Tratamento <span class="text-f5-orange">(A Base)</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">Essa é a parte que exige um pouco mais de mão na massa (e paciência), mas é o que garante que o site vai carregar rápido e ficar bonito.</p>
+
+                <div class="grid md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-f5-surface border border-f5-border rounded-xl p-6">
+                        <i class="ph ph-scissors text-3xl text-f5-orange mb-4 block"></i>
+                        <h3 class="text-lg font-semibold text-white mb-2">1. Preparar Imagens</h3>
+                        <p class="text-sm text-f5-muted">Pegue todas as fotos e logotipos. Remova o fundo das imagens que precisam e corte nos tamanhos certos. Evite imagens "pesadas".</p>
+                    </div>
+                    <div class="bg-f5-surface border border-f5-border rounded-xl p-6">
+                        <i class="ph ph-file-zip text-3xl text-f5-orange mb-4 block"></i>
+                        <h3 class="text-lg font-semibold text-white mb-2">2. Formato WebP</h3>
+                        <p class="text-sm text-f5-muted">Converta as imagens para o formato <strong>WebP</strong>. Esse é o segredo para o site abrir em um piscar de olhos no celular do cliente.</p>
+                    </div>
+                </div>
+
+                <div class="bg-[#1a1a1a] border border-f5-border rounded-xl p-6 border-l-4 border-l-f5-orange">
+                    <h3 class="font-semibold text-white mb-2 flex items-center gap-2"><i class="ph ph-cloud-arrow-up"></i> Passo Crucial para a IA</h3>
+                    <p class="text-f5-muted text-sm">Crie uma pasta na nuvem (Google Drive, por exemplo), coloque todas essas imagens prontas lá dentro e <strong>copie o link de compartilhamento</strong>. A Inteligência Artificial vai precisar desse link no próximo passo!</p>
+                </div>
+            </div>
+
+            <!-- STEP 3 -->
+            <div class="step-content" id="step-2">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 3 de 10</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">O Super <span class="text-f5-orange">Briefing</span></h2>
+                <p class="text-lg text-f5-muted mb-6 leading-relaxed">A Inteligência Artificial não adivinha. Precisamos dar instruções claras e exatas. Montamos um "prompt" (texto de comando) completo.</p>
+
+                <div class="bg-f5-surface border border-f5-border rounded-xl p-6 mb-6">
+                    <h3 class="text-xl font-semibold text-white mb-4 border-b border-f5-border pb-2">O que não pode faltar no comando:</h3>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="flex gap-3">
+                            <i class="ph ph-device-mobile text-2xl text-f5-orange"></i>
+                            <div>
+                                <strong class="text-white block">Mobile First</strong>
+                                <span class="text-sm text-f5-muted">A regra de ouro! Diga para a IA que a página deve ser pensada PRIMEIRO para celular. 90% dos acessos virão de lá.</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <i class="ph ph-palette text-2xl text-f5-orange"></i>
+                            <div>
+                                <strong class="text-white block">Direcionamento Visual & Cores</strong>
+                                <span class="text-sm text-f5-muted">Informe se é dark mode, clean, cores principais (ex: fundo preto, botões laranjas).</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <i class="ph ph-link text-2xl text-f5-orange"></i>
+                            <div>
+                                <strong class="text-white block">Link dos Assets</strong>
+                                <span class="text-sm text-f5-muted">Cole o link do Google Drive que você separou no Passo 2.</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-3">
+                            <i class="ph ph-shooting-star text-2xl text-f5-orange"></i>
+                            <div>
+                                <strong class="text-white block">Animações & Estilo</strong>
+                                <span class="text-sm text-f5-muted">Peça animações suaves (ex: elementos surgindo de baixo) para dar um ar premium.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="relative bg-[#0a0a0a] rounded-lg border border-[#2E2E2E] overflow-hidden">
+                    <div class="bg-[#1A1A1A] px-4 py-2 flex justify-between items-center border-b border-[#2E2E2E]">
+                        <span class="text-xs text-f5-muted font-mono">Template de Prompt (Copie e use)</span>
+                        <button onclick="copyPrompt()" class="text-f5-orange hover:text-white text-sm flex items-center gap-1 transition-colors">
+                            <i class="ph ph-copy"></i> Copiar
+                        </button>
+                    </div>
+                    <pre class="p-4 text-sm text-gray-300 font-mono whitespace-pre-wrap overflow-x-auto" id="prompt-text">Atue como um Web Designer e Desenvolvedor Front-end sênior da agência f5.
+Crie a estrutura de código para uma Landing Page de alta conversão.
+
+INSTRUÇÕES CRUCIAIS:
+1. MOBILE FIRST: A estrutura, espaçamentos e fontes devem ser pensados primeiramente para a experiência no celular, adaptando-se perfeitamente para Desktop.
+2. VISUAL: O design deve ser moderno. Cores: Fundo [INSERIR COR, ex: Dark Mode #0a0a0a], Destaques e Botões em [INSERIR COR, ex: Laranja f5].
+3. ANIMAÇÕES: Inclua micro-interações elegantes e elementos surgindo suavemente ao rolar a tela (fade-in-up).
+4. ASSETS: Use as imagens e logos presentes neste link: [COLE O LINK AQUI].
+
+TEXTOS DA PÁGINA:
+[Cole os textos do cliente aqui organizados por seções (Header, Sobre, Benefícios, FAQ, Formulário)]</pre>
+                </div>
+            </div>
+
+            <!-- STEP 4 -->
+            <div class="step-content" id="step-3">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 4 de 10</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Geração de Estrutura <span class="text-f5-orange">(O Cérebro)</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">Agora transferimos o trabalho pesado de raciocínio lógico e estruturação de código para o Claude (nossa Inteligência Artificial).</p>
+
+                <div class="bg-f5-surface border border-f5-border rounded-xl p-8 text-center">
+                    <div class="w-20 h-20 bg-[#1A1A1A] rounded-full flex items-center justify-center mx-auto mb-6 border border-f5-orange">
+                        <i class="ph ph-brain text-4xl text-f5-orange"></i>
+                    </div>
+                    <h3 class="text-xl font-semibold text-white mb-3">Converse com o Claude</h3>
+                    <p class="text-f5-muted max-w-lg mx-auto mb-6">Cole o "Super Briefing" que você copiou no passo anterior direto no chat do Claude. Ele vai ler, entender as regras da f5, processar os textos e devolver a base da página escrita em código.</p>
+                    <div class="inline-block bg-[#0a0a0a] border border-[#2E2E2E] rounded p-3 text-sm text-left">
+                        <i class="ph ph-info text-f5-orange mr-2"></i><strong>Dica:</strong> Se ele gerar algo fora do lugar, não hesite em pedir no chat: <em>"Ajuste a seção X, o botão deve ter mais destaque"</em>.
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 5 -->
+            <div class="step-content" id="step-4">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 5 de 10</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Desenvolvimento <span class="text-f5-orange">(O Construtor)</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">Temos o projeto estrutural em mãos. Agora vamos levantar as paredes usando a plataforma <strong>Antigravity</strong>.</p>
+
+                <div class="flex flex-col md:flex-row gap-6 items-center bg-f5-surface border border-f5-border rounded-xl p-6">
+                    <div class="flex-1">
+                        <h3 class="text-lg font-semibold text-white mb-2">1. Importação</h3>
+                        <p class="text-sm text-f5-muted mb-4">Copie todo o código/estrutura gerado pelo Claude e cole diretamente no Antigravity.</p>
+                        
+                        <h3 class="text-lg font-semibold text-white mb-2">2. Esqueleto Visual</h3>
+                        <p class="text-sm text-f5-muted">A mágica acontece: o Antigravity pega o texto da IA e transforma em uma interface visual instantaneamente, puxando os blocos, cores iniciais e imagens do drive.</p>
+                    </div>
+                    <div class="w-full md:w-1/3 bg-[#0a0a0a] rounded-lg p-4 border border-[#2E2E2E] flex flex-col items-center justify-center min-h-[200px]">
+                        <i class="ph ph-magic-wand text-5xl text-f5-orange mb-3 animate-pulse"></i>
+                        <span class="text-white font-medium text-center">De Código para<br>Visual em Segundos</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 6 -->
+            <div class="step-content" id="step-5">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 6 de 10</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Ajuste Fino <span class="text-f5-orange">(O Toque Humano)</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">A IA levanta o prédio, mas você é quem faz a decoração de interiores. Esse é o momento onde o design da f5 ganha vida e personalidade.</p>
+
+                <div class="grid md:grid-cols-2 gap-4">
+                    <div class="bg-f5-surface border border-f5-border p-5 rounded-lg">
+                        <i class="ph ph-arrows-out text-2xl text-f5-orange mb-2 block"></i>
+                        <h4 class="text-white font-medium mb-1">Respiros (Espaçamento)</h4>
+                        <p class="text-xs text-f5-muted">A IA costuma espremer as coisas. Aumente as margens entre as seções. O design premium precisa de "ar" para respirar.</p>
+                    </div>
+                    <div class="bg-f5-surface border border-f5-border p-5 rounded-lg">
+                        <i class="ph ph-text-aa text-2xl text-f5-orange mb-2 block"></i>
+                        <h4 class="text-white font-medium mb-1">Tipografia (Letras)</h4>
+                        <p class="text-xs text-f5-muted">Ajuste os tamanhos. Títulos grandes e chamativos, textos de leitura com tamanho confortável (nunca menor que 16px no celular).</p>
+                    </div>
+                    <div class="bg-f5-surface border border-f5-border p-5 rounded-lg">
+                        <i class="ph ph-device-mobile text-2xl text-f5-orange mb-2 block"></i>
+                        <h4 class="text-white font-medium mb-1">Revisão Mobile</h4>
+                        <p class="text-xs text-f5-muted">Diminua a tela e veja se nada quebrou. Botões devem ser grandes o suficiente para um dedo clicar sem errar.</p>
+                    </div>
+                    <div class="bg-f5-surface border border-f5-border p-5 rounded-lg border-l-2 border-l-f5-orange bg-opacity-50">
+                        <i class="ph ph-coin text-2xl text-f5-orange mb-2 block"></i>
+                        <h4 class="text-white font-medium mb-1">Economia de Créditos</h4>
+                        <p class="text-xs text-f5-muted">Use a IA do Antigravity <strong>apenas</strong> para arrumar pequenos erros técnicos. O design visual (cores e espaços) faça com o mouse para poupar os créditos da agência.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 7 -->
+            <div class="step-content" id="step-6">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 7 de 10 (Novo Padrão)</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">O Padrão de <span class="text-f5-orange">Formulários f5</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">Quando o visitante preenche os dados, para onde eles vão? Precisamos garantir que o cliente receba o contato de forma instantânea e organizada no e-mail.</p>
+
+                <!-- Interactive Tabs -->
+                <div class="border-b border-f5-border mb-6 flex gap-2 md:gap-6 overflow-x-auto">
+                    <button class="pb-2 px-1 border-b-2 border-f5-orange text-white font-medium tab-btn whitespace-nowrap" onclick="switchTab(1, this)">Entendendo o Fluxo</button>
+                    <button class="pb-2 px-1 border-b-2 border-transparent text-f5-muted hover:text-white font-medium tab-btn transition-colors whitespace-nowrap" onclick="switchTab(2, this)">Como o Cliente Vê</button>
+                    <button class="pb-2 px-1 border-b-2 border-transparent text-f5-muted hover:text-white font-medium tab-btn transition-colors whitespace-nowrap" onclick="switchTab(3, this)"><i class="ph ph-wrench text-f5-orange"></i> Tutorial Prático</button>
+                </div>
+
+                <!-- Tab 1: Entendendo o Fluxo -->
+                <div id="tab-1" class="tab-content">
+                    <div class="bg-f5-surface p-6 rounded-lg border border-f5-border">
+                        <h4 class="text-white font-semibold text-lg mb-4">Imagine uma transportadora...</h4>
+                        <p class="text-f5-muted text-sm mb-6">O Webhook é apenas o caminhão. Quando alguém clica em "Enviar" no site, o Webhook pega a caixa (os dados) e entrega no destino. Nosso destino é uma Planilha do Google, que organiza tudo e envia o e-mail final.</p>
+                        
+                        <!-- Visual Flowchart -->
+                        <div class="flex flex-col md:flex-row items-center justify-between bg-[#0a0a0a] p-6 rounded-xl border border-[#2E2E2E] gap-4">
+                            <div class="text-center w-full md:w-auto">
+                                <div class="w-16 h-16 bg-[#1A1A1A] rounded-full flex items-center justify-center mx-auto mb-2 border border-[#3E3E3E]">
+                                    <i class="ph ph-browser text-2xl text-f5-muted"></i>
+                                </div>
+                                <span class="text-xs text-white font-medium">Site (Formulário)</span>
+                            </div>
+                            
+                            <div class="flex flex-col items-center">
+                                <span class="text-[10px] text-f5-orange mb-1 uppercase tracking-widest font-bold">Webhook</span>
+                                <i class="ph ph-arrow-right text-f5-orange text-xl rotate-90 md:rotate-0"></i>
+                            </div>
+
+                            <div class="text-center w-full md:w-auto">
+                                <div class="w-16 h-16 bg-[#1A1A1A] rounded-full flex items-center justify-center mx-auto mb-2 border border-[#3E3E3E]">
+                                    <i class="ph ph-file-csv text-2xl text-emerald-500"></i>
+                                </div>
+                                <span class="text-xs text-white font-medium">Planilha Google</span>
+                            </div>
+
+                            <div class="flex flex-col items-center">
+                                <span class="text-[10px] text-f5-orange mb-1 uppercase tracking-widest font-bold">Script f5</span>
+                                <i class="ph ph-arrow-right text-f5-orange text-xl rotate-90 md:rotate-0"></i>
+                            </div>
+
+                            <div class="text-center w-full md:w-auto">
+                                <div class="w-16 h-16 bg-[#1A1A1A] rounded-full flex items-center justify-center mx-auto mb-2 border border-[#3E3E3E]">
+                                    <i class="ph ph-envelope-open text-2xl text-f5-orange"></i>
+                                </div>
+                                <span class="text-xs text-white font-medium">E-mail do Cliente</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 2: O Email f5 -->
+                <div id="tab-2" class="tab-content hidden">
+                    <p class="text-f5-muted mb-4">O nosso código mágico garante que o cliente não receba um e-mail com texto cru e bagunçado. Ele recebe um e-mail Premium, no Dark Mode, com a identidade visual da f5 e um botão direto pro WhatsApp.</p>
+                    <div class="email-mockup max-w-md mx-auto shadow-2xl">
+                        <div class="email-header">
+                            <div class="w-6 h-6 bg-f5-orange rounded flex items-center justify-center text-xs font-bold">f5</div>
+                            <span class="text-white text-sm font-semibold">Novo Lead Capturado</span>
+                        </div>
+                        <div class="p-6">
+                            <p class="text-[10px] text-f5-muted uppercase tracking-wider font-bold mb-1">Nome Completo</p>
+                            <div class="bg-[#1A1A1A] border border-[#2E2E2E] rounded p-3 mb-4">
+                                <p class="text-white text-sm font-medium">João da Silva</p>
+                            </div>
+                            
+                            <p class="text-[10px] text-f5-muted uppercase tracking-wider font-bold mb-1">WhatsApp</p>
+                            <div class="bg-[#1A1A1A] border border-[#2E2E2E] rounded p-3 mb-6">
+                                <p class="text-white text-sm font-medium">(11) 99999-9999</p>
+                            </div>
+
+                            <button class="w-full bg-f5-orange hover:bg-f5-hover text-white font-semibold py-3 rounded-lg flex items-center justify-center gap-2 transition-colors uppercase text-sm tracking-wide">
+                                INICIAR CONVERSA NO WHATSAPP
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab 3: Tutorial Prático (Detailed) -->
+                <div id="tab-3" class="tab-content hidden">
+                     <div class="bg-f5-surface p-6 rounded-lg border border-f5-border space-y-8">
+                        
+                        <!-- Passo A -->
+                        <div class="relative pl-6 border-l-2 border-[#2E2E2E]">
+                            <div class="absolute -left-[11px] top-0 w-5 h-5 bg-[#0a0a0a] border-2 border-f5-orange rounded-full flex items-center justify-center"><span class="text-[10px] text-f5-orange font-bold">1</span></div>
+                            <h4 class="text-white font-semibold mb-2">Preparando a Planilha</h4>
+                            <p class="text-sm text-f5-muted">Acesse o Google Drive e crie uma nova <strong>Planilha do Google</strong> em branco. No menu superior da planilha, clique em <strong class="text-white">Extensões</strong> e depois em <strong class="text-white">Apps Script</strong>.</p>
+                        </div>
+
+                        <!-- Passo B -->
+                        <div class="relative pl-6 border-l-2 border-[#2E2E2E]">
+                            <div class="absolute -left-[11px] top-0 w-5 h-5 bg-[#0a0a0a] border-2 border-f5-orange rounded-full flex items-center justify-center"><span class="text-[10px] text-f5-orange font-bold">2</span></div>
+                            <h4 class="text-white font-semibold mb-2">Colando o Código da f5</h4>
+                            <p class="text-sm text-f5-muted mb-3">Na tela que abriu, apague tudo que estiver escrito lá e cole exatamente este código abaixo:</p>
+                            
+                            <div class="relative bg-[#0a0a0a] rounded-lg border border-[#2E2E2E] overflow-hidden mb-3">
+                                <div class="bg-[#1A1A1A] px-4 py-2 flex justify-between items-center border-b border-[#2E2E2E]">
+                                    <span class="text-xs text-f5-muted font-mono">Código Apps Script</span>
+                                    <button onclick="copyAppsScript()" class="text-f5-orange hover:text-white text-sm flex items-center gap-1 transition-colors">
+                                        <i class="ph ph-copy"></i> Copiar
+                                    </button>
+                                </div>
+                                <pre class="p-4 text-xs text-gray-300 font-mono whitespace-pre-wrap overflow-x-auto h-64" id="apps-script-text">function doPost(e) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+  // 1. Captura dinâmica de dados
+  const dataAtual = new Date();
+  const nome = e.parameter.nome || 'Não informado';
+  const email = e.parameter.email || 'Não informado';
+  const telefone = e.parameter.telefone || 'Não informado';
+  const plano = e.parameter.plano || 'Não informado';
+  const mensagem = e.parameter.mensagem || 'Nenhuma mensagem';
+
+  // 2. Registro na Planilha
+  sheet.appendRow([dataAtual, nome, email, telefone, plano, mensagem]);
+
+  // 3. Estrutura Visual f5 (HTML Dark Mode)
+  const htmlBody = `
+  &lt;!DOCTYPE html&gt;
+  &lt;html&gt;
+  &lt;head&gt;
+  &lt;style&gt;
+    body { font-family: 'Inter', sans-serif; background-color: #0A0A0A; margin: 0; padding: 40px 20px; }
+    .container { max-width: 600px; margin: 0 auto; background-color: #141414; color: #F5F5F5; border-radius: 12px; border: 1px solid #2E2E2E; overflow: hidden; }
+    .header { padding: 30px 40px; border-bottom: 1px solid #2E2E2E; background: linear-gradient(135deg, #141414 0%, #1e110d 100%); }
+    .logo-img { max-width: 50px; height: auto; margin-bottom: 16px; display: block; border-radius: 8px; }
+    .header h1 { margin: 0; font-size: 24px; font-weight: 600; color: #FFFFFF; letter-spacing: -0.5px; }
+    .content { padding: 40px; }
+    .field { margin-bottom: 24px; }
+    .label { font-size: 11px; color: #8A8A8A; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; font-weight: 600; }
+    .value { font-size: 15px; color: #E0E0E0; background-color: #1A1A1A; padding: 14px 18px; border-radius: 8px; border: 1px solid #2E2E2E; }
+    .footer { padding: 30px 40px; background-color: #141414; border-top: 1px solid #2E2E2E; text-align: center; }
+    .btn { display: block; width: 100%; box-sizing: border-box; background-color: #F25621; padding: 16px 0; font-size: 14px; font-weight: 600; border-radius: 8px; text-transform: uppercase; letter-spacing: 1px; text-align: center; text-decoration: none; color: #ffffff !important; }
+  &lt;/style&gt;
+  &lt;/head&gt;
+  &lt;body&gt;
+    &lt;div class="container"&gt;
+      &lt;div class="header"&gt;
+        &lt;img src="LINK_DA_LOGO_F5.png" alt="f5" class="logo-img"&gt;
+        &lt;h1&gt;Novo Lead Capturado&lt;/h1&gt;
+      &lt;/div&gt;
+      &lt;div class="content"&gt;
+        &lt;div class="field"&gt;&lt;div class="label"&gt;Nome Completo&lt;/div&gt;&lt;div class="value"&gt;${nome}&lt;/div&gt;&lt;/div&gt;
+        &lt;div class="field"&gt;&lt;div class="label"&gt;E-mail&lt;/div&gt;&lt;div class="value"&gt;${email}&lt;/div&gt;&lt;/div&gt;
+        &lt;div class="field"&gt;&lt;div class="label"&gt;WhatsApp&lt;/div&gt;&lt;div class="value"&gt;${telefone}&lt;/div&gt;&lt;/div&gt;
+        &lt;div class="field"&gt;&lt;div class="label"&gt;Projeto/Plano&lt;/div&gt;&lt;div class="value"&gt;${plano}&lt;/div&gt;&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div class="footer"&gt;
+        &lt;a href="https://wa.me/55${telefone.replace(/\D/g, '')}" class="btn"&gt;INICIAR CONVERSA NO WHATSAPP&lt;/a&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/body&gt;
+  &lt;/html&gt;
+  `;
+
+  // 4. Configuração de Envio
+  const emailDestino = "cliente@exemplo.com";
+  const assuntoEmail = `[f5 Lead] 🍊 ${nome} - ${plano}`;
+
+  MailApp.sendEmail({
+    to: emailDestino,
+    subject: assuntoEmail,
+    htmlBody: htmlBody
+  });
+
+  return ContentService.createTextOutput("Sucesso");
+}</pre>
+                            </div>
+                            <div class="bg-[#1A1A1A] p-3 rounded flex items-start gap-3 border border-f5-orange/30">
+                                <i class="ph ph-warning-circle text-f5-orange mt-0.5"></i>
+                                <p class="text-xs text-f5-muted"><strong>Atenção:</strong> Role até o final do código e encontre a linha <code class="text-f5-orange">const emailDestino = "cliente@exemplo.com";</code>. Altere esse e-mail para o e-mail verdadeiro de quem vai receber os leads!</p>
+                            </div>
+                        </div>
+
+                        <!-- Passo C -->
+                        <div class="relative pl-6 border-l-2 border-[#2E2E2E]">
+                            <div class="absolute -left-[11px] top-0 w-5 h-5 bg-[#0a0a0a] border-2 border-f5-orange rounded-full flex items-center justify-center"><span class="text-[10px] text-f5-orange font-bold">3</span></div>
+                            <h4 class="text-white font-semibold mb-2">Implantar e Autorizar</h4>
+                            <p class="text-sm text-f5-muted mb-2">No canto superior direito, clique no botão azul <strong class="text-white">Implantar</strong> e depois em <strong class="text-white">Nova implantação</strong>.</p>
+                            <ul class="list-disc list-inside text-sm text-f5-muted space-y-1 mb-2">
+                                <li>Selecione o tipo <strong class="text-white">App da Web</strong> (ícone de engrenagem).</li>
+                                <li>Em "Quem pode acessar", mude para <strong class="text-white text-f5-orange">Qualquer pessoa</strong>.</li>
+                                <li>Clique em Implantar.</li>
+                            </ul>
+                            <p class="text-xs text-f5-muted"><em>O Google vai pedir uma autorização de segurança chata. Clique em "Revisar permissões", escolha sua conta, clique em <strong>Avançado</strong> lá embaixo e depois em "Acessar projeto (não seguro)".</em></p>
+                        </div>
+
+                        <!-- Passo D -->
+                        <div class="relative pl-6 border-l-2 border-transparent">
+                            <div class="absolute -left-[11px] top-0 w-5 h-5 bg-[#0a0a0a] border-2 border-f5-orange rounded-full flex items-center justify-center"><span class="text-[10px] text-f5-orange font-bold">4</span></div>
+                            <h4 class="text-white font-semibold mb-2">Conectando o Webhook</h4>
+                            <p class="text-sm text-f5-muted">O Google vai gerar uma URL longa ("URL do app da Web"). <strong>Copie esse link</strong>.<br>Volte para o Antigravity, clique nas configurações do seu Formulário, procure o campo "Webhook" e cole o link lá. Pronto! O caminho está feito.</p>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 8 -->
+            <div class="step-content" id="step-7">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 8 de 10</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Versionamento <span class="text-f5-orange">(GitHub)</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">O site está pronto e funcionando perfeitamente no construtor. Agora precisamos salvar isso de forma segura.</p>
+
+                <div class="flex items-start gap-4 bg-f5-surface border border-f5-border rounded-xl p-6">
+                    <i class="ph ph-github-logo text-5xl text-white"></i>
+                    <div>
+                        <h3 class="text-xl font-semibold text-white mb-2">O nosso "Pen Drive" da Nuvem</h3>
+                        <p class="text-f5-muted mb-4">Exportamos todos os arquivos da página e subimos para o GitHub. Criamos um <strong>repositório privado</strong> (uma pasta com cadeado).</p>
+                        <p class="text-f5-muted"><strong>Por que fazemos isso?</strong> Se o computador de alguém quebrar ou se precisarmos reverter uma alteração no futuro, o código fonte original está salvo, seguro e acessível para toda a equipe f5.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 9 -->
+            <div class="step-content" id="step-8">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 9 de 10 (Automatizado)</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Vercel e <span class="text-f5-orange">Subdomínio</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">Chegou a hora de tirar a página dos bastidores e colocar na internet de verdade para o mundo ver!</p>
+
+                <div class="space-y-4">
+                    <div class="bg-[#0a0a0a] border border-[#2E2E2E] p-5 rounded-lg flex items-center gap-4">
+                        <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center shrink-0">
+                            <svg class="w-5 h-5 text-black" viewBox="0 0 76 65" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M37.5274 0L75.0548 65H0L37.5274 0Z" fill="currentColor"/></svg>
+                        </div>
+                        <div>
+                            <h4 class="text-white font-medium">1. Hospedagem Instantânea (Deploy)</h4>
+                            <p class="text-xs text-f5-muted mt-1">Entramos na Vercel, conectamos aquela pasta do GitHub (Passo 8) e apertamos "Deploy". A Vercel lê os arquivos e cria o site na internet em poucos segundos.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-f5-surface border border-f5-border p-5 rounded-lg flex items-center gap-4">
+                        <div class="w-10 h-10 bg-f5-border rounded flex items-center justify-center shrink-0 text-f5-orange text-xl">
+                            <i class="ph ph-globe"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-white font-medium">2. Criando o Link Fácil (Subdomínio)</h4>
+                            <p class="text-xs text-f5-muted mt-1">Como nosso sistema de DNS (endereços) já está automatizado, não precisamos quebrar a cabeça. É só ir na Vercel e digitar o nome do cliente antes do nosso domínio padrão.</p>
+                            <div class="mt-3 inline-block bg-[#0a0a0a] border border-[#2E2E2E] px-3 py-1.5 rounded text-sm text-white font-mono">
+                                ex: <span class="text-f5-orange">nomenovo</span>.f5estrategia.com.br
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 10 -->
+            <div class="step-content" id="step-9">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 10 de 10</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Revisão e <span class="text-f5-orange">Handover</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">A página está no ar. Mas o padrão f5 exige que sejamos nossos próprios críticos mais severos antes de enviar ao cliente.</p>
+
+                <div class="bg-f5-surface border border-f5-border rounded-xl p-8">
+                    <h3 class="text-xl font-semibold text-white mb-6 text-center">O Check-list Final</h3>
+                    
+                    <div class="space-y-4 max-w-md mx-auto">
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <div class="w-6 h-6 rounded border border-f5-muted group-hover:border-f5-orange flex items-center justify-center transition-colors">
+                                <i class="ph ph-check text-transparent group-active:text-f5-orange"></i>
+                            </div>
+                            <span class="text-f5-muted group-hover:text-white transition-colors">Abri o link no meu celular e tudo está legível.</span>
+                        </label>
+                        
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <div class="w-6 h-6 rounded border border-f5-muted group-hover:border-f5-orange flex items-center justify-center transition-colors">
+                                <i class="ph ph-check text-transparent group-active:text-f5-orange"></i>
+                            </div>
+                            <span class="text-f5-muted group-hover:text-white transition-colors">A página carrega quase que instantaneamente.</span>
+                        </label>
+
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <div class="w-6 h-6 rounded border border-f5-muted group-hover:border-f5-orange flex items-center justify-center transition-colors">
+                                <i class="ph ph-check text-transparent group-active:text-f5-orange"></i>
+                            </div>
+                            <span class="text-f5-muted group-hover:text-white transition-colors">Preenchi o formulário com dados falsos para testar.</span>
+                        </label>
+
+                        <label class="flex items-center gap-3 cursor-pointer group">
+                            <div class="w-6 h-6 rounded border border-f5-muted group-hover:border-f5-orange flex items-center justify-center transition-colors">
+                                <i class="ph ph-check text-transparent group-active:text-f5-orange"></i>
+                            </div>
+                            <span class="text-f5-muted group-hover:text-white transition-colors">Recebi o "E-mail f5" com os dados do teste certinho.</span>
+                        </label>
+                    </div>
+
+                    <div class="mt-8 text-center pt-8 border-t border-f5-border">
+                        <h4 class="text-white font-bold text-lg mb-2">Tudo validado?</h4>
+                        <p class="text-sm text-f5-muted">Copie o link gerado e envie para aprovação do cliente. Missão cumprida com excelência!</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer Controls (Next/Prev) - CORRIGIDO PARA FLUXO NATURAL -->
+            <div class="mt-12 pt-8 border-t border-[#2E2E2E] flex justify-between items-center w-full">
+                <button id="btn-prev" onclick="prevStep()" class="px-6 py-3 rounded-lg border border-f5-border text-f5-muted hover:text-white hover:border-[#3E3E3E] transition-all hidden">
+                    Anterior
+                </button>
+                <button id="btn-next" onclick="nextStep()" class="ml-auto px-6 py-3 rounded-lg bg-f5-orange hover:bg-f5-hover text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-f5-orange/20">
+                    <i class="ph ph-check-circle text-xl"></i> Concluído. Próximo!
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- JavaScript Logic -->
+    <script>
+        const steps = [
+            { id: 0, title: "Análise do Pedido", icon: "ph-target" },
+            { id: 1, title: "Tratamento de Assets", icon: "ph-scissors" },
+            { id: 2, title: "O Super Briefing", icon: "ph-clipboard-text" },
+            { id: 3, title: "Gerando Estrutura", icon: "ph-brain" },
+            { id: 4, title: "Montagem no Antigravity", icon: "ph-magic-wand" },
+            { id: 5, title: "Refinamento Visual", icon: "ph-paint-brush" },
+            { id: 6, title: "Setup de Formulários", icon: "ph-envelope-simple" },
+            { id: 7, title: "Repositório GitHub", icon: "ph-github-logo" },
+            { id: 8, title: "Vercel & Domínio", icon: "ph-globe" },
+            { id: 9, title: "Revisão e Entrega", icon: "ph-flag-checkered" }
+        ];
+
+        let currentStep = 0;
+        let completedSteps = new Set();
+
+        // Initialize Navigation
+        const navMenu = document.getElementById('nav-menu');
+        
+        function renderNav() {
+            navMenu.innerHTML = '';
+            steps.forEach((step, index) => {
+                const isCompleted = completedSteps.has(index);
+                const isActive = index === currentStep;
+                
+                const btn = document.createElement('button');
+                btn.className = `nav-item w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${isActive ? 'active' : 'text-f5-muted hover:bg-f5-border/50'} ${isCompleted && !isActive ? 'completed' : ''}`;
+                btn.onclick = () => goToStep(index);
+                
+                const iconClass = isCompleted && !isActive ? 'ph-check-circle text-emerald-500' : step.icon;
+                
+                btn.innerHTML = `
+                    <i class="ph ${iconClass} text-xl"></i>
+                    <span class="text-sm font-medium flex-1 truncate">${index + 1}. ${step.title}</span>
+                `;
+                navMenu.appendChild(btn);
+            });
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const percentage = Math.round((completedSteps.size / steps.length) * 100);
+            document.getElementById('progress-bar').style.width = `${percentage}%`;
+            document.getElementById('progress-text').innerText = `${percentage}%`;
+        }
+
+        function goToStep(index) {
+            // Hide current
+            document.getElementById(`step-${currentStep}`).classList.remove('active');
+            
+            // Update step logic
+            currentStep = index;
+            
+            // Show new
+            document.getElementById(`step-${currentStep}`).classList.add('active');
+            
+            // Update Buttons
+            const btnPrev = document.getElementById('btn-prev');
+            const btnNext = document.getElementById('btn-next');
+            
+            btnPrev.style.display = currentStep === 0 ? 'none' : 'block';
+            
+            if (currentStep === steps.length - 1) {
+                btnNext.innerHTML = '<i class="ph ph-confetti text-xl"></i> Finalizar Guia';
+                btnNext.className = "ml-auto px-6 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20";
+            } else {
+                btnNext.innerHTML = '<i class="ph ph-check-circle text-xl"></i> Concluído. Próximo!';
+                btnNext.className = "ml-auto px-6 py-3 rounded-lg bg-f5-orange hover:bg-f5-hover text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-f5-orange/20";
+            }
+
+            renderNav();
+            
+            // Scroll to top of content area smoothly
+            document.getElementById('content-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function nextStep() {
+            // Mark current as completed
+            completedSteps.add(currentStep);
+            
+            if (currentStep < steps.length - 1) {
+                goToStep(currentStep + 1);
+            } else {
+                // Finale
+                renderNav();
+                showToast("Playbook concluído! Arrase nos projetos! 🚀");
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                goToStep(currentStep - 1);
+            }
+        }
+
+        // Generic Copy Logic
+        function executeCopy(textToCopy, successMsg) {
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast(successMsg);
+            }).catch(err => {
+                // Fallback for iframe environments if navigator clipboard fails
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast(successMsg);
+                } catch (err) {
+                    console.error('Falha ao copiar', err);
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+
+        // Feature: Copy Prompt
+        function copyPrompt() {
+            const textToCopy = document.getElementById('prompt-text').innerText;
+            executeCopy(textToCopy, "Prompt copiado para a área de transferência!");
+        }
+
+        // Feature: Copy Apps Script
+        function copyAppsScript() {
+            const textToCopy = document.getElementById('apps-script-text').innerText;
+            executeCopy(textToCopy, "Código Apps Script copiado!");
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Feature: Tabs for Step 7
+        function switchTab(tabNum, btnElement) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            // Reset all buttons
+            const btns = btnElement.parentElement.querySelectorAll('button');
+            btns.forEach(btn => {
+                btn.classList.remove('border-f5-orange', 'text-white');
+                btn.classList.add('border-transparent', 'text-f5-muted');
+            });
+            
+            // Show selected tab
+            document.getElementById(`tab-${tabNum}`).classList.remove('hidden');
+            // Highlight selected button
+            btnElement.classList.remove('border-transparent', 'text-f5-muted');
+            btnElement.classList.add('border-f5-orange', 'text-white');
+        }
+
+        // UI Initialization tweaks
+        document.querySelectorAll('label.group').forEach(label => {
+             label.addEventListener('click', function(e) {
+                 e.preventDefault();
+                 const icon = this.querySelector('i');
+                 if(icon.classList.contains('text-transparent')) {
+                     icon.classList.remove('text-transparent');
+                     icon.classList.add('text-f5-orange');
+                     this.querySelector('div').classList.add('border-f5-orange');
+                 } else {
+                     icon.classList.add('text-transparent');
+                     icon.classList.remove('text-f5-orange');
+                     this.querySelector('div').classList.remove('border-f5-orange');
+                 }
+             });
+        });
+
+        // Start
+        renderNav();
+        goToStep(0);
+    </script>
+</body>
+</html>
