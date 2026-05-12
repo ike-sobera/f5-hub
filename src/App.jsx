@@ -442,7 +442,14 @@ export default function App() {
                         </div>
                       )}
                       <div className="doc-icon">📄</div><h3 className="text-primary">{d.title}</h3><p className="text-support">{d.desc}</p>
-                      <button className="btn-outline" style={{ marginTop: 'auto', alignSelf: 'flex-start' }}>Acessar</button>
+                      <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <button className="btn-outline">Acessar</button>
+                        {d.author && (
+                          <span className="text-support" style={{ fontSize: '11px', background: 'rgba(255,255,255,0.05)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <User size={10} /> {d.author}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}</div>
                 </div>
