@@ -130,11 +130,18 @@ const PromptCard = ({ item, onEdit, onDelete, isAdmin }) => {
         <button onClick={(e) => { e.stopPropagation(); onDelete(item.id); }} className="btn-icon btn-icon-danger card-delete"><Trash2 size={14} /></button>
       )}
       <div className="prompt-header">
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="badge">{item.category}</span>
           <span style={{ fontSize: '12px', color: 'var(--text-support)' }}>{item.tool}</span>
+          {item.tags && (Array.isArray(item.tags) ? item.tags : String(item.tags).split(',')).map((tag, idx) => (
+            tag.trim() ? (
+              <span key={idx} style={{ background: '#171717', color: '#deff9a', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px' }}>
+                {tag.trim()}
+              </span>
+            ) : null
+          ))}
         </div>
-        <span style={{ fontSize: '12px', color: 'var(--text-support)' }}>{copyCount} cópias</span>
+        <span style={{ fontSize: '12px', color: 'var(--text-support)', flexShrink: 0 }}>{copyCount} cópias</span>
       </div>
       <div className="prompt-content text-primary">{item.prompt}</div>
       <button className={copied ? "btn-outline" : "btn-primary"} onClick={(e) => { e.stopPropagation(); handleCopy(); }} style={{ width: '100%' }}>
@@ -152,6 +159,7 @@ export default function App() {
 
   const [tools, setTools] = useState([]);
   const [prompts, setPrompts] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [trends, setTrends] = useState([]);
   const [docs, setDocs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -166,6 +174,19 @@ export default function App() {
   const promptsRef = useRef(null);
   const [activePromptIndex, setActivePromptIndex] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);
+
+  const filteredPrompts = prompts.filter(p => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    const contentToSearch = [
+      p.title,
+      p.prompt,
+      p.category,
+      p.tool,
+      Array.isArray(p.tags) ? p.tags.join(' ') : p.tags
+    ].filter(Boolean).join(' ').toLowerCase();
+    return contentToSearch.includes(term);
+  });
 
   const isActive = (path) => location.pathname === path;
 
@@ -400,15 +421,33 @@ export default function App() {
               } />
               <Route path="/prompts" element={
                 <div className="animate-fade-in">
-                  <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-                    <div style={{ flex: 1 }}>
-                      <h1 className="page-title text-primary">Biblioteca de Prompts</h1>
-                      <p className="page-subtitle text-support">Melhores prompts em produção.</p>
+                  <div className="page-header" style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '40px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                      <div style={{ flex: 1 }}>
+                        <h1 className="page-title text-primary">Biblioteca de Prompts</h1>
+                        <p className="page-subtitle text-support">Melhores prompts em produção.</p>
+                      </div>
+                      <button className="btn-primary" onClick={() => openAddModal('prompts')} style={{ flexShrink: 0 }}><Plus size={16} /> Adicionar Novo</button>
                     </div>
-                    <button className="btn-primary" onClick={() => openAddModal('prompts')} style={{ flexShrink: 0 }}><Plus size={16} /> Adicionar Novo</button>
+                    
+                    <div style={{ display: 'flex', alignItems: 'center', background: '#111', borderRadius: '8px', border: '1px solid #262626', padding: '12px 16px', width: '100%', maxWidth: '600px' }}>
+                      <Search size={18} className="text-support" style={{ marginRight: '12px' }} />
+                      <input 
+                        type="text"
+                        placeholder="Pesquisar prompts, ferramentas ou tags..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        style={{ background: 'transparent', border: 'none', color: '#fff', width: '100%', outline: 'none', fontSize: '14px' }}
+                      />
+                    </div>
                   </div>
-                  <div className="prompts-carousel" ref={promptsRef} onScroll={handlePromptScroll}>{prompts.map((p, i) => <div key={p.id} className={`prompt-wrapper ${i === activePromptIndex ? 'active' : ''}`} onClick={() => handleCardClick(i)}><PromptCard item={p} isAdmin={isAdmin} onEdit={openEditModal.bind(null, 'prompts')} onDelete={handleDelete.bind(null, 'prompts')} /></div>)}</div>
-                  <div className="scroll-indicator-container"><div className="scroll-track"><div className="scroll-progress" style={{ width: `${scrollProgress}%` }}></div></div></div>
+                  <div className="prompts-carousel" ref={promptsRef} onScroll={handlePromptScroll}>{filteredPrompts.map((p, i) => <div key={p.id} className={`prompt-wrapper ${i === activePromptIndex ? 'active' : ''}`} onClick={() => handleCardClick(i)}><PromptCard item={p} isAdmin={isAdmin} onEdit={openEditModal.bind(null, 'prompts')} onDelete={handleDelete.bind(null, 'prompts')} /></div>)}</div>
+                  {filteredPrompts.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-support)' }}>Nenhum prompt encontrado.</div>
+                  )}
+                  {filteredPrompts.length > 0 && (
+                    <div className="scroll-indicator-container"><div className="scroll-track"><div className="scroll-progress" style={{ width: `${scrollProgress}%` }}></div></div></div>
+                  )}
                 </div>
               } />
               <Route path="/trends" element={

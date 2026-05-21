@@ -1,27 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { BarChart3, TrendingUp, BookOpen, FileText, LayoutGrid } from 'lucide-react';
+import { BarChart3, TrendingUp, BookOpen, FileText, LayoutGrid, Award, Star } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ tools: 0, prompts: 0, trends: 0, docs: 0, totalCopies: 0 });
   const [recentTools, setRecentTools] = useState([]);
   const [topPrompts, setTopPrompts] = useState([]);
+  const [topContributors, setTopContributors] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      const [tools, prompts, trends, docs, recent, topPromptsData, totalCopiesData] = await Promise.all([
+      const [tools, prompts, trends, docs, recent, topPromptsData, totalCopiesData, allPromptsForGamification] = await Promise.all([
         supabase.from('tools').select('*', { count: 'exact', head: true }),
         supabase.from('prompts').select('*', { count: 'exact', head: true }),
         supabase.from('trends').select('*', { count: 'exact', head: true }),
         supabase.from('docs').select('*', { count: 'exact', head: true }),
         supabase.from('tools').select('name, category').order('created_at', { ascending: false }).limit(5),
-        supabase.from('prompts').select('id, prompt, copy_count').order('copy_count', { ascending: false }).limit(5),
-        supabase.from('prompts').select('copy_count')
+        supabase.from('prompts').select('id, title, prompt, copy_count').order('copy_count', { ascending: false }).limit(5),
+        supabase.from('prompts').select('copy_count'),
+        supabase.from('prompts').select('author, copy_count')
       ]);
 
       const totalCopiesCount = totalCopiesData.data?.reduce((acc, curr) => acc + (curr.copy_count || 0), 0) || 0;
+
+      const authorStats = allPromptsForGamification.data?.reduce((acc, curr) => {
+        const author = curr.author || 'Anônimo';
+        acc[author] = (acc[author] || 0) + (curr.copy_count || 0);
+        return acc;
+      }, {});
+
+      const contributorsRanking = Object.entries(authorStats || {})
+        .map(([author, copies]) => ({ author, copies }))
+        .sort((a, b) => b.copies - a.copies)
+        .slice(0, 3);
 
       setStats({
         tools: tools.count || 0,
@@ -32,6 +45,7 @@ export default function AdminDashboard() {
       });
       setRecentTools(recent.data || []);
       setTopPrompts(topPromptsData.data || []);
+      setTopContributors(contributorsRanking);
       setLoading(false);
     };
     fetchData();
@@ -112,7 +126,7 @@ export default function AdminDashboard() {
                 return (
                   <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                      <span className="text-primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{p.prompt}</span>
+                      <span className="text-primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{p.title || p.prompt}</span>
                       <span className="text-support">{p.copy_count || 0} cópias</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
@@ -121,6 +135,33 @@ export default function AdminDashboard() {
                   </div>
                 );
               })
+            )}
+          </div>
+        </div>
+
+        <div className="glass-card" style={{ padding: '32px' }}>
+          <h3 style={{ fontSize: '18px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Award size={20} className="text-accent" /> Top Contribuidores
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {topContributors.length === 0 || !hasInteractions ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', color: 'var(--text-support)' }}>
+                <Award size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
+                <p style={{ fontSize: '14px' }}>Aguardando interações da equipe</p>
+              </div>
+            ) : (
+              topContributors.map((c, i) => (
+                <div key={i} className="list-item-simple" style={{ justifyContent: 'space-between', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: i === 0 ? 'rgba(222, 255, 154, 0.1)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: i === 0 ? 'var(--accent-color)' : 'var(--text-support)', fontWeight: 'bold', fontSize: '12px' }}>
+                      {i + 1}
+                    </div>
+                    <span style={{ fontWeight: 500, color: i === 0 ? 'var(--accent-color)' : 'var(--text-primary)' }}>{c.author}</span>
+                    {i === 0 && <Star size={16} fill="currentColor" className="text-accent" style={{ marginLeft: '4px' }} />}
+                  </div>
+                  <span className="badge-tiny" style={{ background: 'var(--neutral-900)', color: 'var(--accent-color)' }}>{c.copies} cópias</span>
+                </div>
+              ))
             )}
           </div>
         </div>
