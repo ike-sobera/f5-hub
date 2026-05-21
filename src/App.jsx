@@ -118,11 +118,17 @@ const PromptCard = ({ item, onEdit, onDelete, isAdmin }) => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     
-    setCopyCount(prev => prev + 1);
-    
-    // Métrica de uso
-    const { error } = await supabase.rpc('increment_prompt_copy', { target_id: item.id });
-    if (error) console.error('Erro ao incrementar cópia do prompt:', error);
+    try {
+      // Métrica de uso
+      const { error } = await supabase.rpc('increment_prompt_copy', { target_id: item.id });
+      if (error) {
+        console.error("Erro ao salvar métrica no Supabase:", error);
+      } else {
+        setCopyCount(prev => prev + 1);
+      }
+    } catch (err) {
+      console.error("Erro ao salvar métrica no Supabase:", err);
+    }
   };
   return (
     <div className="glass-card prompt-card hover-actions-container" style={{ position: 'relative', cursor: 'pointer' }} onClick={() => onEdit(item)}>
