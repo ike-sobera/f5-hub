@@ -18,20 +18,20 @@ export default function AdminDashboard() {
         supabase.from('trends').select('*', { count: 'exact', head: true }),
         supabase.from('docs').select('*', { count: 'exact', head: true }),
         supabase.from('tools').select('name, category').order('created_at', { ascending: false }).limit(5),
-        supabase.from('prompts').select('id, title, prompt, copy_count').order('copy_count', { ascending: false }).limit(5),
+        supabase.from('prompts').select('id, title, prompt, copy_count').gt('copy_count', 0).order('copy_count', { ascending: false }).limit(5),
         supabase.from('prompts').select('copy_count'),
-        supabase.from('prompts').select('author, copy_count')
+        supabase.from('prompts').select('author, copy_count').gt('copy_count', 0)
       ]);
 
       const totalCopiesCount = totalCopiesData.data?.reduce((acc, curr) => acc + (curr.copy_count || 0), 0) || 0;
 
-      const authorStats = allPromptsForGamification.data?.reduce((acc, curr) => {
-        const author = curr.author || 'Anônimo';
-        acc[author] = (acc[author] || 0) + (curr.copy_count || 0);
+      const autores = allPromptsForGamification.data?.reduce((acc, curr) => {
+        const nome = curr.author || 'Desconhecido';
+        acc[nome] = (acc[nome] || 0) + (curr.copy_count || 0);
         return acc;
       }, {});
 
-      const contributorsRanking = Object.entries(authorStats || {})
+      const contributorsRanking = Object.entries(autores || {})
         .map(([author, copies]) => ({ author, copies }))
         .sort((a, b) => b.copies - a.copies)
         .slice(0, 3);
@@ -50,8 +50,6 @@ export default function AdminDashboard() {
     };
     fetchData();
   }, []);
-
-  const hasInteractions = stats.totalCopies > 0 && topPrompts.some(p => (p.copy_count || 0) > 0);
 
   return (
     <div className="animate-fade-in">
@@ -114,7 +112,7 @@ export default function AdminDashboard() {
             <BarChart3 size={20} className="text-accent" /> Top 5 Prompts Mais Copiados
           </h3>
           <div className="bar-chart" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {!hasInteractions ? (
+            {topPrompts.length === 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', color: 'var(--text-support)' }}>
                 <BarChart3 size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
                 <p style={{ fontSize: '14px' }}>Aguardando interações da equipe</p>
@@ -144,7 +142,7 @@ export default function AdminDashboard() {
             <Award size={20} className="text-accent" /> Top Contribuidores
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {topContributors.length === 0 || !hasInteractions ? (
+            {topContributors.length === 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px', color: 'var(--text-support)' }}>
                 <Award size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
                 <p style={{ fontSize: '14px' }}>Aguardando interações da equipe</p>

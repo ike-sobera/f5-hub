@@ -266,7 +266,7 @@ export default function App() {
       setLoading(true);
       const [t, p, tr, d, s] = await Promise.all([
         supabase.from('tools').select('*').order('created_at', { ascending: true }),
-        supabase.from('prompts').select('*').order('created_at', { ascending: false }),
+        supabase.from('prompts').select('*, copy_count').order('created_at', { ascending: false }),
         supabase.from('trends').select('*').order('date', { ascending: false }),
         supabase.from('docs').select('*').order('created_at', { ascending: false }),
         supabase.from('social_interactions').select('*')
