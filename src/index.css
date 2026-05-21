@@ -548,6 +548,23 @@ p {
   margin-bottom: 20px;
   line-height: 1.6;
   border: 1px solid var(--glass-border);
+  max-height: 18rem;
+  overflow-y: auto;
+}
+
+.prompt-content::-webkit-scrollbar {
+  width: 6px;
+}
+.prompt-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+.prompt-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+.prompt-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Timeline */

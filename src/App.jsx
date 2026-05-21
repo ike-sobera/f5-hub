@@ -218,6 +218,19 @@ export default function App() {
     };
   }, []);
 
+  // Prevenção de Scroll Bleed nos Modais
+  useEffect(() => {
+    const isAnyModalOpen = selectedTool || selectedDoc || isModalOpen || isHelpModalOpen || crudModal.isOpen;
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [selectedTool, selectedDoc, isModalOpen, isHelpModalOpen, crudModal.isOpen]);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
