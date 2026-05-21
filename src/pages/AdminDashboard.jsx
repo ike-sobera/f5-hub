@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { BarChart3, TrendingUp, BookOpen, FileText, LayoutGrid, Award, Star } from 'lucide-react';
+import { BarChart3, TrendingUp, BookOpen, FileText, LayoutGrid, Award, Star, Trophy, Medal } from 'lucide-react';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ tools: 0, prompts: 0, trends: 0, docs: 0, totalCopies: 0 });
@@ -10,31 +10,52 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fetchGamificationScore = async () => {
+      const [promptsData, docsData] = await Promise.all([
+        supabase.from('prompts').select('author, copy_count'),
+        supabase.from('docs').select('author')
+      ]);
+
+      const scores = {};
+
+      const addScore = (authorRaw, points) => {
+        if (!authorRaw) return;
+        const author = authorRaw.split('@')[0];
+        scores[author] = (scores[author] || 0) + points;
+      };
+
+      promptsData.data?.forEach(p => {
+        addScore(p.author, 5); // 5 points per new prompt
+        if (p.copy_count > 0) {
+          addScore(p.author, p.copy_count * 2); // 2 points per copy
+        }
+      });
+
+      docsData.data?.forEach(d => {
+        addScore(d.author, 10); // 10 points per new doc
+      });
+
+      const ranking = Object.entries(scores)
+        .map(([name, xp]) => ({ name, xp }))
+        .sort((a, b) => b.xp - a.xp)
+        .slice(0, 3);
+      
+      setTopContributors(ranking);
+    };
+
     const fetchData = async () => {
       setLoading(true);
-      const [tools, prompts, trends, docs, recent, topPromptsData, totalCopiesData, allPromptsForGamification] = await Promise.all([
+      const [tools, prompts, trends, docs, recent, topPromptsData, totalCopiesData] = await Promise.all([
         supabase.from('tools').select('*', { count: 'exact', head: true }),
         supabase.from('prompts').select('*', { count: 'exact', head: true }),
         supabase.from('trends').select('*', { count: 'exact', head: true }),
         supabase.from('docs').select('*', { count: 'exact', head: true }),
         supabase.from('tools').select('name, category').order('created_at', { ascending: false }).limit(5),
         supabase.from('prompts').select('id, title, prompt, copy_count').gt('copy_count', 0).order('copy_count', { ascending: false }).limit(5),
-        supabase.from('prompts').select('copy_count'),
-        supabase.from('prompts').select('author, copy_count').gt('copy_count', 0)
+        supabase.from('prompts').select('copy_count')
       ]);
 
       const totalCopiesCount = totalCopiesData.data?.reduce((acc, curr) => acc + (curr.copy_count || 0), 0) || 0;
-
-      const autores = allPromptsForGamification.data?.reduce((acc, curr) => {
-        const nome = curr.author || 'Desconhecido';
-        acc[nome] = (acc[nome] || 0) + (curr.copy_count || 0);
-        return acc;
-      }, {});
-
-      const contributorsRanking = Object.entries(autores || {})
-        .map(([author, copies]) => ({ author, copies }))
-        .sort((a, b) => b.copies - a.copies)
-        .slice(0, 3);
 
       setStats({
         tools: tools.count || 0,
@@ -44,8 +65,15 @@ export default function AdminDashboard() {
         totalCopies: totalCopiesCount
       });
       setRecentTools(recent.data || []);
-      setTopPrompts(topPromptsData.data || []);
-      setTopContributors(contributorsRanking);
+      
+      const formattedPrompts = (topPromptsData.data || []).map(item => ({
+        id: item.id,
+        name: item.title || item.prompt,
+        value: item.copy_count || 0
+      }));
+      setTopPrompts(formattedPrompts);
+      
+      await fetchGamificationScore();
       setLoading(false);
     };
     fetchData();
@@ -119,13 +147,13 @@ export default function AdminDashboard() {
               </div>
             ) : (
               topPrompts.map((p, i) => {
-                const maxCopies = Math.max(...topPrompts.map(pr => pr.copy_count || 1));
-                const width = ((p.copy_count || 0) / maxCopies) * 100;
+                const maxCopies = Math.max(...topPrompts.map(pr => pr.value || 1));
+                const width = ((p.value || 0) / maxCopies) * 100;
                 return (
                   <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
-                      <span className="text-primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{p.title || p.prompt}</span>
-                      <span className="text-support">{p.copy_count || 0} cópias</span>
+                      <span className="text-primary" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '70%' }}>{p.name}</span>
+                      <span className="text-support">{p.value || 0} cópias</span>
                     </div>
                     <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
                       <div style={{ width: `${width}%`, height: '100%', background: 'var(--accent-color)', borderRadius: '4px' }}></div>
@@ -152,12 +180,14 @@ export default function AdminDashboard() {
                 <div key={i} className="list-item-simple" style={{ justifyContent: 'space-between', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: i === 0 ? 'rgba(222, 255, 154, 0.1)' : 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: i === 0 ? 'var(--accent-color)' : 'var(--text-support)', fontWeight: 'bold', fontSize: '12px' }}>
-                      {i + 1}
+                      {i + 1}º
                     </div>
-                    <span style={{ fontWeight: 500, color: i === 0 ? 'var(--accent-color)' : 'var(--text-primary)' }}>{c.author}</span>
-                    {i === 0 && <Star size={16} fill="currentColor" className="text-accent" style={{ marginLeft: '4px' }} />}
+                    <span style={{ fontWeight: 500, color: i === 0 ? 'var(--accent-color)' : 'var(--text-primary)' }}>{c.name}</span>
+                    {i === 0 && <Trophy size={16} fill="currentColor" className="text-accent" style={{ marginLeft: '4px' }} />}
+                    {i === 1 && <Medal size={16} color="#c0c0c0" style={{ marginLeft: '4px' }} />}
+                    {i === 2 && <Medal size={16} color="#cd7f32" style={{ marginLeft: '4px' }} />}
                   </div>
-                  <span className="badge-tiny" style={{ background: 'var(--neutral-900)', color: 'var(--accent-color)' }}>{c.copies} cópias</span>
+                  <span className="badge-tiny" style={{ background: 'var(--neutral-900)', color: 'var(--accent-color)' }}>{c.xp} XP</span>
                 </div>
               ))
             )}
