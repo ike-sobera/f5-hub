@@ -25,17 +25,23 @@ export default function CrudModal({ isOpen, onClose, type, item, onSuccess }) {
     e.preventDefault();
     setLoading(true);
 
+    const { data: { user } } = await supabase.auth.getUser();
+    const finalData = { ...formData };
+    if (user && user.email) {
+      finalData.author = user.email;
+    }
+
     let error;
     let savedRecord = null;
 
     if (item) {
       // Update
-      const { data, error: err } = await supabase.from(type).update(formData).eq('id', item.id).select();
+      const { data, error: err } = await supabase.from(type).update(finalData).eq('id', item.id).select();
       error = err;
       if (data) savedRecord = data[0];
     } else {
       // Insert
-      const { data, error: err } = await supabase.from(type).insert([formData]).select();
+      const { data, error: err } = await supabase.from(type).insert([finalData]).select();
       error = err;
       if (data) savedRecord = data[0];
     }

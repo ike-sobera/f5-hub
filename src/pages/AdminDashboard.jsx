@@ -11,9 +11,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const fetchGamificationScore = async () => {
-      const [promptsData, docsData] = await Promise.all([
+      const [promptsData, docsData, toolsData] = await Promise.all([
         supabase.from('prompts').select('author, copy_count'),
-        supabase.from('docs').select('author')
+        supabase.from('docs').select('author'),
+        supabase.from('tools').select('author')
       ]);
 
       const scores = {};
@@ -21,7 +22,8 @@ export default function AdminDashboard() {
       const addScore = (authorRaw, points) => {
         if (!authorRaw) return;
         const author = authorRaw.split('@')[0];
-        scores[author] = (scores[author] || 0) + points;
+        const formattedAuthor = author.charAt(0).toUpperCase() + author.slice(1);
+        scores[formattedAuthor] = (scores[formattedAuthor] || 0) + points;
       };
 
       promptsData.data?.forEach(p => {
@@ -33,6 +35,10 @@ export default function AdminDashboard() {
 
       docsData.data?.forEach(d => {
         addScore(d.author, 10); // 10 points per new doc
+      });
+
+      toolsData.data?.forEach(t => {
+        addScore(t.author, 5); // 5 points per new tool
       });
 
       const ranking = Object.entries(scores)
@@ -69,7 +75,9 @@ export default function AdminDashboard() {
       const formattedPrompts = (topPromptsData.data || []).map(item => ({
         id: item.id,
         name: item.title || item.prompt,
-        value: item.copy_count || 0
+        value: item.copy_count || 0,
+        uv: item.copy_count || 0,
+        pv: item.copy_count || 0
       }));
       setTopPrompts(formattedPrompts);
       
