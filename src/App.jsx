@@ -118,12 +118,15 @@ const PromptCard = ({ item, onEdit, onDelete, isAdmin }) => {
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     
+    console.log('Tentando salvar cópia. ID do Prompt:', item.id, '| Tipo:', typeof item.id);
+    
     try {
       // Métrica de uso
       const { error } = await supabase.rpc('increment_prompt_copy', { target_id: item.id });
       if (error) {
-        console.error("Erro ao salvar métrica no Supabase:", error);
+        console.error('Falha no RPC:', error.message, error.details, error.hint);
       } else {
+        console.log('Sucesso! Métrica computada no Supabase.');
         setCopyCount(prev => prev + 1);
       }
     } catch (err) {
