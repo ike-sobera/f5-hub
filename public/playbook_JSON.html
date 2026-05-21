@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playbook f5: Clonagem de Cena com IA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        f5: {
+                            orange: '#F25621',
+                            hover: '#d94c1c',
+                            dark: '#0a0a0a',
+                            surface: '#141414',
+                            border: '#2E2E2E',
+                            text: '#E0E0E0',
+                            muted: '#A8A8A8'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { background-color: #0a0a0a; color: #E0E0E0; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0a0a0a; }
+        ::-webkit-scrollbar-thumb { background: #2E2E2E; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #F25621; }
+
+        .step-content { display: none; animation: fadeIn 0.4s ease-out forwards; }
+        .step-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .nav-item.active { background-color: rgba(242, 86, 33, 0.1); border-left-color: #F25621; color: #F25621; }
+        .nav-item.active i { color: #F25621; }
+        .nav-item.completed { color: #A8A8A8; }
+        .nav-item.completed i { color: #10B981; }
+        
+        .toast {
+            position: fixed; bottom: 20px; right: 20px; background: #141414; border: 1px solid #F25621;
+            color: white; padding: 12px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(242, 86, 33, 0.2);
+            transform: translateY(100px); opacity: 0; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); z-index: 50;
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row font-sans">
+
+    <div id="toast" class="toast flex items-center gap-3">
+        <i class="ph ph-check-circle text-f5-orange text-xl"></i>
+        <span id="toast-msg">Copiado com sucesso!</span>
+    </div>
+
+    <aside class="w-full md:w-80 bg-f5-surface border-b md:border-b-0 md:border-r border-f5-border flex flex-col h-auto md:h-full shrink-0 relative z-20">
+        <div class="p-6 border-b border-f5-border flex items-center gap-4 sticky top-0 bg-f5-surface z-10">
+            <div class="w-10 h-10 bg-f5-orange rounded font-bold text-white flex items-center justify-center text-xl tracking-tighter">f5</div>
+            <div>
+                <h1 class="text-white font-semibold text-lg leading-tight">Geração de Imagens</h1>
+                <p class="text-f5-muted text-xs">Clonagem via JSON f5</p>
+            </div>
+        </div>
+        
+        <div class="p-4 bg-[#0a0a0a] border-b border-f5-border">
+            <div class="flex justify-between text-xs mb-2">
+                <span class="text-f5-muted">Progresso</span>
+                <span id="progress-text" class="text-f5-orange font-medium">0%</span>
+            </div>
+            <div class="w-full bg-f5-border rounded-full h-1.5">
+                <div id="progress-bar" class="bg-f5-orange h-1.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto p-4 flex flex-col gap-1 pb-20" id="nav-menu">
+            </nav>
+    </aside>
+
+    <main class="flex-1 h-full overflow-y-auto bg-f5-dark relative">
+        <div class="max-w-4xl mx-auto p-6 md:p-12 pb-16" id="content-container">
+            
+            <div class="step-content active" id="step-0">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 1 de 6</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">O Conceito: <span class="text-f5-orange">O Diretor e o Ator</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">Imagine que você é um diretor de cinema. Você achou o cenário perfeito, a luz perfeita e a pose perfeita em uma foto (Pinterest, Behance, um meme). Mas você precisa que o <strong>seu cliente</strong> seja a estrela dessa cena.</p>
+                
+                <div class="bg-f5-surface border border-f5-border rounded-xl p-6 mb-8">
+                    <h3 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                        <i class="ph ph-magic-wand text-f5-orange"></i> Como a mágica acontece
+                    </h3>
+                    <p class="text-f5-muted mb-6 text-sm">Nós não vamos pedir para a IA "desenhar algo parecido". Vamos usar um <strong>fluxo profissional de extração</strong>. Nós "roubamos" apenas a luz, a pose e o cenário (o Blueprint) e jogamos o nosso cliente lá dentro, removendo os textos e bagunças da imagem original.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                        <div class="text-center">
+                            <div class="bg-[#1A1A1A] rounded-lg border border-[#2E2E2E] p-2 mb-2 aspect-[3/4] flex items-center justify-center relative overflow-hidden">
+                                <span class="absolute top-2 left-2 bg-black/60 px-2 py-1 text-[10px] rounded text-white font-bold z-10">REFERÊNCIA</span>
+                                <!-- COLOQUE AQUI O LINK DA IMAGEM HOSPEDADA NO SEU SERVIDOR -->
+                                <img src="https://i.imgur.com/mv3SZX3.png" alt="Cena Original" class="w-full h-full object-cover rounded opacity-90 hover:opacity-100 transition-opacity">
+                            </div>
+                            <span class="text-xs text-f5-orange font-bold uppercase">1. O Cenário</span>
+                        </div>
+                        
+                        <div class="text-center">
+                            <div class="bg-[#1A1A1A] rounded-lg border border-[#2E2E2E] p-2 mb-2 aspect-[3/4] flex items-center justify-center relative overflow-hidden">
+                                <span class="absolute top-2 left-2 bg-black/60 px-2 py-1 text-[10px] rounded text-white font-bold z-10">ROSTO</span>
+                                <!-- COLOQUE AQUI O LINK DA IMAGEM HOSPEDADA NO SEU SERVIDOR -->
+                                <img src="https://i.imgur.com/UGhpAWz.png" alt="Foto do Cliente" class="w-full h-full object-cover rounded opacity-90 hover:opacity-100 transition-opacity">
+                            </div>
+                            <span class="text-xs text-f5-orange font-bold uppercase">2. O Ator</span>
+                        </div>
+
+                        <div class="text-center">
+                            <div class="bg-f5-orange/10 rounded-lg border border-f5-orange p-2 mb-2 aspect-[3/4] flex items-center justify-center relative overflow-hidden">
+                                <span class="absolute top-2 left-2 bg-f5-orange px-2 py-1 text-[10px] rounded text-white font-bold z-10">RESULTADO</span>
+                                <!-- COLOQUE AQUI O LINK DA IMAGEM HOSPEDADA NO SEU SERVIDOR -->
+                                <img src="https://i.imgur.com/WNMUoEI.png" alt="Resultado Final" class="w-full h-full object-cover rounded shadow-[0_0_20px_rgba(242,86,33,0.25)]">
+                            </div>
+                            <span class="text-xs text-emerald-500 font-bold uppercase">3. A Mágica</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-content" id="step-1">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 2 de 6</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">A Imagem de <span class="text-f5-orange">Referência</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">Primeiro, você precisa de uma imagem que tenha exatamente a "vibe" que você quer para a Landing Page ou anúncio.</p>
+
+                <div class="flex flex-col md:flex-row gap-6">
+                    <div class="flex-1 space-y-4">
+                        <div class="bg-f5-surface border border-f5-border p-5 rounded-lg flex gap-4">
+                            <i class="ph ph-check-circle text-2xl text-emerald-500 shrink-0"></i>
+                            <div>
+                                <h4 class="text-white font-medium text-sm">O que importa na foto:</h4>
+                                <p class="text-xs text-f5-muted mt-1">A posição dos braços, a inclinação da cabeça, as sombras, as cores do ambiente e o clima da cena.</p>
+                            </div>
+                        </div>
+                        <div class="bg-f5-surface border border-f5-border p-5 rounded-lg flex gap-4">
+                            <i class="ph ph-x-circle text-2xl text-red-500 shrink-0"></i>
+                            <div>
+                                <h4 class="text-white font-medium text-sm">O que NÃO importa:</h4>
+                                <p class="text-xs text-f5-muted mt-1">A identidade da pessoa, o cabelo, a roupa e até mesmo textos ou logos espalhados pela foto (vamos arrancar tudo isso!).</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="w-full md:w-1/3 bg-[#1A1A1A] p-4 rounded-lg border border-[#2E2E2E] flex flex-col items-center justify-center text-center">
+                        <i class="ph ph-download-simple text-4xl text-f5-orange mb-2"></i>
+                        <h4 class="text-white font-medium">Salve a Imagem</h4>
+                        <p class="text-xs text-f5-muted mt-1">Baixe sua referência no Pinterest e deixe salva no seu PC. Vamos usá-la no próximo passo.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-content" id="step-2">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 3 de 6</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">A Extração do <span class="text-f5-orange">Blueprint (JSON)</span></h2>
+                <p class="text-lg text-f5-muted mb-6 leading-relaxed">Chegou a hora de transformar aquela imagem em dados puros. Vá até o <strong>Claude</strong> ou <strong>ChatGPT</strong> e anexe a foto de referência que você escolheu.</p>
+
+                <div class="bg-f5-orange/10 border border-f5-orange p-4 rounded-lg flex items-start gap-3 mb-6">
+                    <i class="ph ph-warning text-f5-orange text-xl mt-0.5"></i>
+                    <div>
+                        <p class="text-sm text-white font-medium">Atenção ao copiar!</p>
+                        <p class="text-xs text-f5-orange/80">O texto abaixo é um super prompt técnico. Apenas copie, cole junto com a foto de referência e aperte Enter. A IA vai te devolver um código JSON complexo.</p>
+                    </div>
+                </div>
+
+                <div class="relative bg-[#0a0a0a] rounded-lg border border-[#2E2E2E] overflow-hidden">
+                    <div class="bg-[#1A1A1A] px-4 py-3 flex justify-between items-center border-b border-[#2E2E2E]">
+                        <span class="text-xs text-f5-muted font-bold uppercase tracking-wider">Prompt de Extração de Cena</span>
+                        <button onclick="copyPrompt('prompt-json')" class="bg-f5-orange/20 hover:bg-f5-orange text-f5-orange hover:text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1 transition-colors">
+                            <i class="ph ph-copy"></i> Copiar Prompt
+                        </button>
+                    </div>
+                    <pre class="p-5 text-[11px] leading-relaxed text-gray-300 font-mono whitespace-pre-wrap overflow-y-auto max-h-[400px]" id="prompt-json">EXTRAÇÃO PROFISSIONAL DE JSON CINEMATOGRÁFICO PARA IA DE IMAGEM
+
+Analise a imagem enviada e gere um JSON cinematográfico EXTREMAMENTE DETALHADO e ESTRUTURADO.
+O objetivo NÃO é descrever a pessoa da imagem.
+O objetivo é extrair:
+composição
+pose
+iluminação
+câmera
+ambiente
+direção de arte
+narrativa visual
+cinematografia
+para que posteriormente outra ferramenta possa substituir completamente a identidade da pessoa usando uma nova imagem de referência.
+
+CONTEXTO DO WORKFLOW
+Fluxo real:
+1. Uma imagem é enviada apenas para EXTRAÇÃO do JSON
+2. Depois, em outra ferramenta:
+o JSON será reutilizado
+uma NOVA foto de pessoa será anexada
+3. A nova ferramenta irá:
+usar o JSON como blueprint cinematográfico
+usar a nova foto apenas para rosto e roupa
+Portanto:
+A PESSOA ORIGINAL NÃO É CANÔNICA
+A composição é canônica.
+A cinematografia é canônica.
+A pose é canônica.
+A identidade NÃO.
+
+OBJETIVO PRINCIPAL
+Criar um JSON que funcione como:
+blueprint visual reutilizável
+molde cinematográfico
+estrutura de direção de arte
+composição procedural
+base para identity replacement
+O JSON deve preservar:
+pose
+câmera
+iluminação
+ambiente
+blocking
+profundidade
+narrativa visual
+emoção da cena
+permitindo substituir:
+rosto
+cabelo
+etnia
+roupa
+identidade
+
+ESTRUTURA OBRIGATÓRIA
+O JSON deve SEMPRE conter:
+objective
+format
+identity_replacement_rules
+reference_priority
+scene
+subject_pose
+composition
+lighting
+environment
+visual_style
+camera_direction
+emotional_tone
+strict_removals
+negative_prompt
+
+REGRAS CRÍTICAS
+1. IDENTIDADE NÃO É FIXA
+A imagem original NÃO deve definir: rosto, cabelo, roupa, etnia, identidade visual.
+O JSON deve tratar o sujeito original apenas como placeholder.
+
+2. EXTRAIR APENAS A DIREÇÃO DE ARTE
+Focar em: pose, câmera, cinematografia, ambiente, iluminação, profundidade.
+
+3. SUBJECT PLACEHOLDER RULE
+O JSON deve deixar explícito: original_subject_is_placeholder_only.
+
+4. IDENTITY REPLACEMENT RULES
+Conter: replace_subject_identity: true, replace_face: true, etc.
+
+5. WARDROBE FLEXIBILITY
+Permitir troca completa de figurino sem quebrar pose.
+
+6. DESCREVER A POSE COM EXTREMA PRECISÃO
+Cabeça, braços, tensão corporal, distribuição de peso. NUNCA identidade facial.
+
+7. COMPOSIÇÃO, ILUMINAÇÃO, AMBIENTE E ESTILO
+Detalhar ao extremo: câmera, luz, sombras, objetos, atmosfera.
+
+11. REMOVER ELEMENTOS GRÁFICOS
+Remover: textos, logos, UI, marcas d’água, stickers. Preservando o ambiente limpo.
+
+12. NEGATIVE PROMPT AGRESSIVO
+Bloquear: different composition, original face retention, bad anatomy, text, logos, etc.
+
+13. QUALIDADE DO RESULTADO
+A saída deve parecer documentação de pipeline de direção de arte para IA.
+NÃO simplifique. NÃO resuma. Quero um JSON técnico e altamente detalhado.</pre>
+                </div>
+            </div>
+
+            <div class="step-content" id="step-3">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 4 de 6</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">A Foto do <span class="text-f5-orange">Cliente</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">O Claude te devolveu o código JSON. Excelente! Agora você precisa da foto de quem vai "atuar" nessa cena.</p>
+
+                <div class="bg-f5-surface border border-f5-border rounded-xl p-6">
+                    <div class="flex items-start gap-4 mb-4">
+                        <div class="w-12 h-12 bg-[#1A1A1A] rounded-full border border-[#2E2E2E] flex items-center justify-center shrink-0">
+                            <i class="ph ph-camera-plus text-2xl text-f5-orange"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-white">Escolha a foto certa</h3>
+                            <p class="text-sm text-f5-muted mt-1">A foto do cliente não precisa ter o fundo perfeito (nós vamos descartá-lo). Mas o rosto precisa estar visível, em uma resolução bacana. Esta foto será a nossa <strong>Identidade Absoluta</strong>.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-content" id="step-4">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 5 de 6</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">A Geração Final <span class="text-f5-orange">(O Encaixe)</span></h2>
+                <p class="text-lg text-f5-muted mb-6 leading-relaxed">Vá para a ferramenta de geração de imagem que você usa (Midjourney, ferramentas DALL-E, etc). Siga essa ordem exata para colar as informações:</p>
+
+                <div class="bg-[#1A1A1A] border border-[#2E2E2E] rounded-xl p-6 mb-8 shadow-xl">
+                    <ol class="space-y-5">
+                        <li class="flex gap-4 items-center border-b border-[#2E2E2E] pb-4">
+                            <div class="w-8 h-8 rounded bg-f5-dark border border-f5-border flex items-center justify-center text-f5-orange font-bold">1</div>
+                            <span class="text-white text-sm font-medium">Anexe a foto do seu CLIENTE (Passo 4).</span>
+                        </li>
+                        <li class="flex gap-4 items-center border-b border-[#2E2E2E] pb-4">
+                            <div class="w-8 h-8 rounded bg-f5-dark border border-f5-border flex items-center justify-center text-f5-orange font-bold">2</div>
+                            <span class="text-white text-sm font-medium">Cole o texto "Trava de Identidade" abaixo.</span>
+                        </li>
+                        <li class="flex gap-4 items-center">
+                            <div class="w-8 h-8 rounded bg-f5-dark border border-f5-border flex items-center justify-center text-f5-orange font-bold">3</div>
+                            <span class="text-white text-sm font-medium">Cole todo aquele código JSON que o Claude gerou (Passo 3) logo em seguida.</span>
+                        </li>
+                    </ol>
+                </div>
+
+                <div class="relative bg-[#0a0a0a] rounded-lg border border-[#2E2E2E] overflow-hidden">
+                    <div class="bg-[#1A1A1A] px-4 py-3 flex justify-between items-center border-b border-[#2E2E2E]">
+                        <span class="text-xs text-f5-muted font-bold uppercase tracking-wider">Prompt de Trava de Identidade (Inglês)</span>
+                        <button onclick="copyPrompt('prompt-lock')" class="bg-f5-orange/20 hover:bg-f5-orange text-f5-orange hover:text-white px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1 transition-colors">
+                            <i class="ph ph-copy"></i> Copiar Trava
+                        </button>
+                    </div>
+                    <pre class="p-5 text-[13px] leading-relaxed text-gray-300 font-mono whitespace-pre-wrap" id="prompt-lock">The attached person image is the ABSOLUTE facial identity reference.
+
+The generated person MUST be unmistakably the exact same person.
+
+Do NOT reinterpret, redesign, approximate or replace the face identity.
+
+Preserve:
+- facial proportions
+- eye shape
+- jawline
+- nose structure
+- mouth shape
+- skin tone
+- hairline
+
+The face identity is mandatory and locked.
+
+[COLE O CÓDIGO JSON AQUI ABAIXO]</pre>
+                </div>
+            </div>
+
+            <div class="step-content" id="step-5">
+                <div class="inline-block px-3 py-1 bg-f5-border rounded-full text-xs text-f5-muted mb-4 border border-[#3E3E3E]">Passo 6 de 6</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-white mb-4">Aperte o Enter e <span class="text-f5-orange">Valide</span></h2>
+                <p class="text-lg text-f5-muted mb-8 leading-relaxed">A IA vai ler o JSON para construir o cenário e a pose, e vai ler a foto + prompt em inglês para esculpir o rosto. O resultado é profissional e limpo.</p>
+
+                <div class="bg-f5-surface border border-f5-border rounded-xl p-8 text-center max-w-lg mx-auto">
+                    <i class="ph ph-confetti text-5xl text-f5-orange mb-4"></i>
+                    <h3 class="text-xl font-bold text-white mb-2">Check-list de Sucesso</h3>
+                    <div class="text-left space-y-3 text-sm text-f5-muted mt-6">
+                        <p><i class="ph ph-check text-emerald-500 mr-2"></i> A pose está idêntica à foto original?</p>
+                        <p><i class="ph ph-check text-emerald-500 mr-2"></i> O rosto é claramente o do seu cliente?</p>
+                        <p><i class="ph ph-check text-emerald-500 mr-2"></i> Textos indesejados e marcas d'água sumiram?</p>
+                    </div>
+                    <div class="mt-8 pt-6 border-t border-[#2E2E2E]">
+                        <p class="text-xs text-f5-muted">Se a resposta for sim para tudo, você acabou de criar uma imagem de alto padrão de conversão f5. Baixe a imagem e leve para o design!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-12 pt-8 border-t border-[#2E2E2E] flex justify-between items-center w-full">
+                <button id="btn-prev" onclick="prevStep()" class="px-6 py-3 rounded-lg border border-f5-border text-f5-muted hover:text-white hover:border-[#3E3E3E] transition-all hidden">
+                    Anterior
+                </button>
+                <button id="btn-next" onclick="nextStep()" class="ml-auto px-6 py-3 rounded-lg bg-f5-orange hover:bg-f5-hover text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-f5-orange/20">
+                    <i class="ph ph-check-circle text-xl"></i> Concluído. Próximo!
+                </button>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        const steps = [
+            { id: 0, title: "O Conceito", icon: "ph-lightbulb" },
+            { id: 1, title: "Referência", icon: "ph-image" },
+            { id: 2, title: "Blueprint JSON", icon: "ph-file-code" },
+            { id: 3, title: "Foto do Cliente", icon: "ph-user-focus" },
+            { id: 4, title: "Geração Final", icon: "ph-magic-wand" },
+            { id: 5, title: "Resultado", icon: "ph-check-circle" }
+        ];
+
+        let currentStep = 0;
+        let completedSteps = new Set();
+
+        const navMenu = document.getElementById('nav-menu');
+        
+        function renderNav() {
+            navMenu.innerHTML = '';
+            steps.forEach((step, index) => {
+                const isCompleted = completedSteps.has(index);
+                const isActive = index === currentStep;
+                
+                const btn = document.createElement('button');
+                btn.className = `nav-item w-full text-left p-3 rounded-lg flex items-center gap-3 transition-colors ${isActive ? 'active' : 'text-f5-muted hover:bg-f5-border/50'} ${isCompleted && !isActive ? 'completed' : ''}`;
+                btn.onclick = () => goToStep(index);
+                
+                const iconClass = isCompleted && !isActive ? 'ph-check-circle text-emerald-500' : step.icon;
+                
+                btn.innerHTML = `
+                    <i class="ph ${iconClass} text-xl"></i>
+                    <span class="text-sm font-medium flex-1 truncate">${index + 1}. ${step.title}</span>
+                `;
+                navMenu.appendChild(btn);
+            });
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const percentage = Math.round((completedSteps.size / steps.length) * 100);
+            document.getElementById('progress-bar').style.width = `${percentage}%`;
+            document.getElementById('progress-text').innerText = `${percentage}%`;
+        }
+
+        function goToStep(index) {
+            document.getElementById(`step-${currentStep}`).classList.remove('active');
+            currentStep = index;
+            document.getElementById(`step-${currentStep}`).classList.add('active');
+            
+            const btnPrev = document.getElementById('btn-prev');
+            const btnNext = document.getElementById('btn-next');
+            
+            btnPrev.style.display = currentStep === 0 ? 'none' : 'block';
+            
+            if (currentStep === steps.length - 1) {
+                btnNext.innerHTML = '<i class="ph ph-confetti text-xl"></i> Finalizar Fluxo';
+                btnNext.className = "ml-auto px-6 py-3 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20";
+            } else {
+                btnNext.innerHTML = '<i class="ph ph-check-circle text-xl"></i> Concluído. Próximo!';
+                btnNext.className = "ml-auto px-6 py-3 rounded-lg bg-f5-orange hover:bg-f5-hover text-white font-semibold flex items-center gap-2 transition-all shadow-lg shadow-f5-orange/20";
+            }
+
+            renderNav();
+            document.getElementById('content-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function nextStep() {
+            completedSteps.add(currentStep);
+            if (currentStep < steps.length - 1) {
+                goToStep(currentStep + 1);
+            } else {
+                renderNav();
+                showToast("Playbook concluído! Pronto para gerar imagens impecáveis! 🚀");
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) goToStep(currentStep - 1);
+        }
+
+        function copyPrompt(elementId) {
+            const textToCopy = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                showToast("Prompt copiado para a área de transferência!");
+            }).catch(err => {
+                const textArea = document.createElement("textarea");
+                textArea.value = textToCopy;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    showToast("Prompt copiado com sucesso!");
+                } catch (err) {
+                    console.error('Falha ao copiar', err);
+                }
+                document.body.removeChild(textArea);
+            });
+        }
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        renderNav();
+        goToStep(0);
+    </script>
+</body>
+</html>
